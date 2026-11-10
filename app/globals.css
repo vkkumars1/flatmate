@@ -1,0 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap');
+@import 'tailwindcss';
+
+:root { --paper: #f4efe6; --ink: #111111; --tomato: #ff4d2e; --lime: #c8ff3d; --sky: #bfe3ff; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'DM Sans', sans-serif; }
+body::before { content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .04; z-index: 50; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E"); }
+::selection { background: var(--lime); color: var(--ink); }
+.font-display { font-family: 'Bricolage Grotesque', sans-serif; }
+.font-serif { font-family: 'Instrument Serif', serif; }
+.font-mono { font-family: 'Space Mono', monospace; }
+.cursor-none, .cursor-none * { cursor: none !important; }
+@media (pointer: coarse) { .cursor-none, .cursor-none * { cursor: auto !important; } }
