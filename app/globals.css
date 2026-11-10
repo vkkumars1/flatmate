@@ -12,8 +12,6 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; opa
 .font-display { font-family: 'Bricolage Grotesque', sans-serif; }
 .font-serif { font-family: 'Instrument Serif', serif; }
 .font-mono { font-family: 'Space Mono', monospace; }
-.cursor-none, .cursor-none * { cursor: none !important; }
-@media (pointer: coarse) { .cursor-none, .cursor-none * { cursor: auto !important; } }
 @keyframes float { 0%, 100% { transform: translateY(0) rotate(6deg); } 50% { transform: translateY(-12px) rotate(8deg); } }
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .marquee { animation: marquee 28s linear infinite; }
