@@ -21,7 +21,7 @@ export async function getListing(id: string) { await wait(); return mockListings
 /** Returns the current profile. Replace with fetch('/api/profile'). */
 export async function getProfile() { await wait(); return mockUser }
 /** Saves profile fields. Replace with a PATCH fetch('/api/profile'). */
-export async function saveProfile(data: Partial<typeof mockUser>) { await wait(); return { ...mockUser, ...data } }
+export async function saveProfile(data: Partial<typeof mockUser> & Record<string, unknown>) { await wait(); return { ...mockUser, ...data } }
 /** Returns agreement rules for a match. Replace with fetch(`/api/agreements/${matchId}`). */
 export async function getAgreement(matchId: string) { await wait(); return { id: `agreement-${matchId}`, matchId, rules: ['Quiet hours after 11pm', 'Split utilities equally'], acceptedBy: [] as string[] } }
 /** Saves agreement rules. Replace with a POST fetch('/api/agreements'). */
