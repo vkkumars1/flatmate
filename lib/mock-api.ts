@@ -1,5 +1,7 @@
 import { mockListings, mockMatches, mockUser } from './mocks'
 
+let profileStore: Record<string, unknown> = { ...mockUser, bio: '', plan: 'FREE', phone: true, email: false, selfie: false }
+
 const wait = (min = 300, max = 700) => new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min))
 
 /** Returns the next discover page and cursor for infinite scrolling. Replace with fetch('/api/discover?cursor=...'). */
@@ -32,10 +34,12 @@ export async function getCompatibility(matchId: string) { await wait(); return {
 export async function getListings(filters: { city?: string; maxRent?: number; cursor?: string } = {}) { await wait(); const listings = mockListings.filter((listing) => (!filters.city || listing.locality.toLowerCase().includes(filters.city.toLowerCase())) && (!filters.maxRent || listing.rent <= filters.maxRent)); return { listings, nextCursor: undefined } }
 /** Returns one listing by id. Replace with fetch(`/api/listings/${id}`). */
 export async function getListing(id: string) { await wait(); return mockListings.find((listing) => listing.id === id) ?? null }
-/** Returns the current profile. Replace with fetch('/api/profile'). */
-export async function getProfile() { await wait(); return mockUser }
-/** Saves profile fields. Replace with a PATCH fetch('/api/profile'). */
-export async function saveProfile(data: Partial<typeof mockUser> & Record<string, unknown>) { await wait(); return { ...mockUser, ...data } }
+/** Returns the current profile from the in-memory mock store. */
+export async function getProfile() { await wait(); return { ...profileStore } }
+/** Saves profile fields to the in-memory mock store so routes share updates. */
+export async function saveProfile(data: Partial<typeof mockUser> & Record<string, unknown>) { await wait(); profileStore = { ...profileStore, ...data }; return { ...profileStore } }
+/** Clears session-like mock state without persisting credentials in the browser. */
+export function clearInMemoryStore() { profileStore = { ...mockUser, bio: '', plan: 'FREE', phone: true, email: false, selfie: false } }
 /** Returns agreement rules for a match. Replace with fetch(`/api/agreements/${matchId}`). */
 export async function getAgreement(matchId: string) { await wait(); return { id: `agreement-${matchId}`, matchId, rules: ['Quiet hours after 11pm', 'Split utilities equally'], acceptedBy: [] as string[] } }
 /** Saves agreement rules. Replace with a POST fetch('/api/agreements'). */
