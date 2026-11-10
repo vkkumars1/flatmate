@@ -3,9 +3,23 @@ import { mockListings, mockMatches, mockUser } from './mocks'
 const wait = (min = 300, max = 700) => new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min))
 
 /** Returns the next discover page and cursor for infinite scrolling. Replace with fetch('/api/discover?cursor=...'). */
-export async function getDiscover(cursor?: string) { await wait(); return { users: mockMatches, nextCursor: cursor ? undefined : 'page-2' } }
+export async function getDiscover(cursor?: string) {
+  await wait()
+  const items = mockMatches.map((match, index) => ({
+    userId: match.id.replace('m_', 'u_'),
+    name: match.name,
+    age: 26 + index,
+    city: match.locality,
+    score: match.score,
+    topReasons: ['Both sleep before 11', 'You both like a tidy kitchen', 'Similar move-in timing'],
+    lifestyleChips: match.tags.map((label, chipIndex) => ({ label, same: chipIndex === 0 })),
+    budgetMin: 15000 + index * 3000,
+    budgetMax: 28000 + index * 3000,
+  }))
+  return { items, nextCursor: cursor ? undefined : 'page-2' }
+}
 /** Records a swipe action for a user. Replace with a POST fetch('/api/swipes'). */
-export async function swipe(toUserId: string, action: 'like' | 'pass' | 'superlike') { await wait(); return { toUserId, action, matched: action !== 'pass' } }
+export async function swipe(toUserId: string, action: 'like' | 'pass' | 'super') { await wait(); return { toUserId, action, matched: action !== 'pass' } }
 /** Returns the current user's matches. Replace with fetch('/api/matches'). */
 export async function getMatches() { await wait(); return mockMatches }
 /** Returns chat messages for a match. Replace with fetch(`/api/matches/${matchId}/messages`). */
