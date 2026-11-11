@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { BrushCleaning, Check, ChevronLeft, ChevronRight, CloudUpload, Moon, PartyPopper, Phone, ShieldCheck, Sun, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth'
+import { signInWithGoogle } from '@/lib/google-signin'
 import { saveProfile } from '@/lib/mock-api'
 import { firebaseVerify } from '@/lib/auth-api'
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase-client'
@@ -87,6 +88,22 @@ function PhoneStep({ verified, onVerified, error }: { verified: boolean; onVerif
   const [localError, setLocalError] = useState<string | null>(null)
   const confirmationRef = useRef<ConfirmationResult | null>(null)
   const verifierRef = useRef<RecaptchaVerifier | null>(null)
+  const [googleBusy, setGoogleBusy] = useState(false)
+
+  const handleGoogle = async () => {
+    setLocalError(null)
+    if (!isFirebaseConfigured()) { setLocalError('Sign-in is not configured yet'); return }
+    try {
+      setGoogleBusy(true)
+      await signInWithGoogle()
+      onVerified()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Google sign-in failed'
+      setLocalError(message)
+    } finally {
+      setGoogleBusy(false)
+    }
+  }
 
   const sendCode = async () => {
     setLocalError(null)
@@ -132,6 +149,11 @@ function PhoneStep({ verified, onVerified, error }: { verified: boolean; onVerif
   return <Screen title="Verify your number." eyebrow="One quick check first">
     <div className="rounded-3xl border-2 border-black bg-white p-6 md:p-8">
       {!sent && <>
+        <button type="button" onClick={handleGoogle} disabled={googleBusy} className="mb-5 flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-black bg-white px-5 py-3 font-bold shadow-[4px_4px_0_#111] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-60">
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.7 1.2 9.2 3.5l6.9-6.9C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.5 13.3l8 6.2C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 3-2.2 5.5-4.7 7.2l7.2 5.6c4.2-3.9 6.8-9.6 6.8-17.3z"/><path fill="#FBBC05" d="M10.5 28.5c-.5-1.4-.8-2.9-.8-4.5s.3-3.1.8-4.5l-8-6.2C.9 16.6 0 20.2 0 24s.9 7.4 2.5 10.7l8-6.2z"/><path fill="#34A853" d="M24 48c6.4 0 11.8-2.1 15.7-5.8l-7.2-5.6c-2 1.4-4.6 2.2-8.5 2.2-6.3 0-11.7-4.1-13.5-9.8l-8 6.2C6.5 42.6 14.6 48 24 48z"/></svg>
+          {googleBusy ? 'Opening…' : 'Continue with Google'}
+        </button>
+        <div className="my-4 flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-black/40"><span className="h-px flex-1 bg-black/20" />or phone<span className="h-px flex-1 bg-black/20" /></div>
         <label className="field">Mobile number
           <div className="flex items-center gap-2">
             <span className="rounded-2xl border-2 border-black bg-[#f4efe6] px-3 py-3 font-mono text-sm">+91</span>
