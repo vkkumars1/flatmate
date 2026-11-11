@@ -1,26 +1,25 @@
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendEmailVerification,
-  type UserCredential,
-} from 'firebase/auth'
-import { getFirebaseAuth } from './firebase-client'
-import { firebaseVerify } from './auth-api'
+import { api, setAccessToken } from './api'
 
-async function finalizeCredential(credential: UserCredential) {
-  const idToken = await credential.user.getIdToken()
-  return firebaseVerify(idToken)
+export type AuthResponse = {
+  accessToken: string
+  user: { id: string; name: string; role: string; plan: string }
+  isNewUser: boolean
 }
 
-export async function signUpWithEmail(email: string, password: string) {
-  const auth = getFirebaseAuth()
-  const credential = await createUserWithEmailAndPassword(auth, email, password)
-  await sendEmailVerification(credential.user).catch(() => null)
-  return finalizeCredential(credential)
+export async function signUpEmail(email: string, password: string, name?: string) {
+  const result = await api<AuthResponse>('/auth/email/signup', {
+    method: 'POST',
+    body: JSON.stringify({ email: email.trim().toLowerCase(), password, ...(name ? { name } : {}) }),
+  })
+  setAccessToken(result.accessToken)
+  return result
 }
 
-export async function signInWithEmail(email: string, password: string) {
-  const auth = getFirebaseAuth()
-  const credential = await signInWithEmailAndPassword(auth, email, password)
-  return finalizeCredential(credential)
+export async function signInEmail(email: string, password: string) {
+  const result = await api<AuthResponse>('/auth/email/signin', {
+    method: 'POST',
+    body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+  })
+  setAccessToken(result.accessToken)
+  return result
 }
