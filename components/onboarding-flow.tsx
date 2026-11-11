@@ -11,11 +11,11 @@ import { firebaseVerify } from '@/lib/auth-api'
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase-client'
 import { onboardingSchemas, type OnboardingData, type OnboardingStep } from '@/lib/schemas'
 
-const steps: OnboardingStep[] = ['phone', 'mode', 'basics', 'budget', 'sleep', 'cleanliness', 'habits', 'dealBreakers', 'photos', 'bio', 'done']
+const steps: OnboardingStep[] = ['mode', 'basics', 'budget', 'sleep', 'cleanliness', 'habits', 'dealBreakers', 'photos', 'bio', 'done']
 const cities = ['Gurugram', 'Bangalore', 'Pune', 'Delhi', 'Mumbai']
 const habits = ['smoking', 'drinking', 'pets', 'diet', 'cooking', 'guests', 'noise'] as const
 const habitLabels: Record<(typeof habits)[number], string> = { smoking: 'Smoking', drinking: 'Drinking', pets: 'Pets', diet: 'Diet', cooking: 'Cooking', guests: 'Guests', noise: 'Noise' }
-const initialData: OnboardingData = { phoneVerified: false, mode: '', name: '', gender: '', dob: '', city: '', occupation: '', minBudget: 10000, maxBudget: 30000, moveInDate: '', sleepTime: 23, wakeTime: 7, cleanliness: 0, habits: {}, dealBreakers: [], photos: [], bio: '' }
+const initialData: OnboardingData = { mode: '', name: '', gender: '', dob: '', city: '', occupation: '', minBudget: 10000, maxBudget: 30000, moveInDate: '', sleepTime: 23, wakeTime: 7, cleanliness: 0, habits: {}, dealBreakers: [], photos: [], bio: '' }
 
 function FieldError({ message }: { message?: string }) { return message ? <p className="mt-2 text-sm font-medium text-[#d92d20]">{message}</p> : null }
 function Sticker({ children, selected, onClick, tone = 'paper' }: { children: React.ReactNode; selected?: boolean; onClick?: () => void; tone?: 'paper' | 'lime' | 'sky' }) { return <button type="button" onClick={onClick} className={`rounded-full border-2 border-black px-4 py-3 text-left text-sm font-bold shadow-[3px_3px_0_#111] transition hover:-translate-y-0.5 ${selected ? 'bg-[#ff4d2e] text-white' : tone === 'lime' ? 'bg-[#c8ff3d]' : tone === 'sky' ? 'bg-[#bfe3ff]' : 'bg-[#f4efe6]'}`}>{children}</button> }
