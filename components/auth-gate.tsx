@@ -22,7 +22,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative">
-      <div aria-hidden className="pointer-events-none select-none blur-md saturate-50 brightness-95">
+      <div aria-hidden="true" inert className="pointer-events-none select-none blur-md saturate-50 brightness-95">
         {children}
       </div>
       <motion.div role="dialog" aria-modal="true" aria-labelledby="auth-gate-title" className="fixed inset-0 z-50 flex items-center justify-center bg-[#111]/35 px-5 backdrop-blur-md" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }}>
@@ -31,16 +31,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             <Lock size={12} strokeWidth={3} /> Sign in required
           </div>
           <h2 id="auth-gate-title" className="font-display text-3xl font-extrabold tracking-[-.04em]">
-            Verify your phone to continue
+            Sign in to keep exploring
           </h2>
           <p className="mt-3 text-sm text-[#111]/70">
-            FlatFit needs a quick phone check before showing flatmates, matches, listings or the upgrade page. Takes 10 seconds.
+            Create an account or sign in with your email to explore flatmates, matches, listings, and more.
           </p>
           <Link
             href="/onboarding"
             className="mt-6 inline-flex w-full items-center justify-center border-2 border-[#111] bg-[#ff4d2e] px-5 py-3 font-mono text-[11px] font-bold uppercase tracking-[.16em] text-white shadow-[4px_4px_0_#111] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
           >
-            Sign in with phone
+            Continue with email
           </Link>
           <Link
             href="/"

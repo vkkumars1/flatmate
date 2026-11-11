@@ -1,26 +1,27 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { BrushCleaning, Check, ChevronLeft, ChevronRight, CloudUpload, Moon, PartyPopper, Phone, ShieldCheck, Sun, X } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { BrushCleaning, Check, ChevronLeft, ChevronRight, CloudUpload, KeyRound, Mail, Moon, PartyPopper, Sun, UserRoundPlus, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
 import { saveProfile } from '@/lib/mock-api'
 import { firebaseVerify } from '@/lib/auth-api'
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase-client'
 import { onboardingSchemas, type OnboardingData, type OnboardingStep } from '@/lib/schemas'
 
-const steps: OnboardingStep[] = ['phone', 'mode', 'basics', 'budget', 'sleep', 'cleanliness', 'habits', 'dealBreakers', 'photos', 'bio', 'done']
+const steps: OnboardingStep[] = ['email', 'mode', 'basics', 'budget', 'sleep', 'cleanliness', 'habits', 'dealBreakers', 'photos', 'bio', 'done']
 const cities = ['Gurugram', 'Bangalore', 'Pune', 'Delhi', 'Mumbai']
 const habits = ['smoking', 'drinking', 'pets', 'diet', 'cooking', 'guests', 'noise'] as const
 const habitLabels: Record<(typeof habits)[number], string> = { smoking: 'Smoking', drinking: 'Drinking', pets: 'Pets', diet: 'Diet', cooking: 'Cooking', guests: 'Guests', noise: 'Noise' }
-const initialData: OnboardingData = { phoneVerified: false, mode: '', name: '', gender: '', dob: '', city: '', occupation: '', minBudget: 10000, maxBudget: 30000, moveInDate: '', sleepTime: 23, wakeTime: 7, cleanliness: 0, habits: {}, dealBreakers: [], photos: [], bio: '' }
+const initialData: OnboardingData = { emailAuthenticated: false, mode: '', name: '', gender: '', dob: '', city: '', occupation: '', minBudget: 10000, maxBudget: 30000, moveInDate: '', sleepTime: 23, wakeTime: 7, cleanliness: 0, habits: {}, dealBreakers: [], photos: [], bio: '' }
 
 function FieldError({ message }: { message?: string }) { return message ? <p className="mt-2 text-sm font-medium text-[#d92d20]">{message}</p> : null }
 function Sticker({ children, selected, onClick, tone = 'paper' }: { children: React.ReactNode; selected?: boolean; onClick?: () => void; tone?: 'paper' | 'lime' | 'sky' }) { return <button type="button" onClick={onClick} className={`rounded-full border-2 border-black px-4 py-3 text-left text-sm font-bold shadow-[3px_3px_0_#111] transition hover:-translate-y-0.5 ${selected ? 'bg-[#ff4d2e] text-white' : tone === 'lime' ? 'bg-[#c8ff3d]' : tone === 'sky' ? 'bg-[#bfe3ff]' : 'bg-[#f4efe6]'}`}>{children}</button> }
 
 export function OnboardingFlow() {
   const router = useRouter()
+  const reduceMotion = useReducedMotion()
   const [index, setIndex] = useState(0)
   const [data, setData] = useState<OnboardingData>(initialData)
   const [direction, setDirection] = useState(1)
@@ -48,15 +49,15 @@ export function OnboardingFlow() {
   }
   const back = () => { if (index === 0) return; setDirection(-1); setIndex((current) => current - 1) }
 
-  const advanceAfterPhone = () => { setDirection(1); setIndex((current) => current + 1) }
+  const advanceAfterEmail = () => { setDirection(1); setIndex((current) => current + 1) }
 
   return <main className="min-h-screen bg-[#f4efe6] text-[#111]">
     <header className="sticky top-0 z-30 border-b-2 border-black bg-[#f4efe6]/95 px-4 py-4 backdrop-blur md:px-8">
       <div className="mx-auto flex max-w-5xl items-center gap-4"><button type="button" aria-label="Go back" onClick={back} disabled={index === 0} className="grid h-11 w-11 place-items-center rounded-full border-2 border-black bg-white disabled:opacity-30"><ChevronLeft size={20} /></button><div className="flex-1"><div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-[0.16em]"><span>Build your flatmate profile</span><span className="font-mono">{index + 1}/{steps.length}</span></div><div className="h-3 overflow-hidden rounded-full border-2 border-black bg-white"><motion.div className="h-full bg-[#ff4d2e]" animate={{ width: `${progress}%` }} transition={{ type: 'spring', stiffness: 100, damping: 18 }} /></div></div></div>
     </header>
     <div className="mx-auto flex min-h-[calc(100vh-91px)] max-w-5xl items-center px-4 py-10 md:px-8">
-      <AnimatePresence mode="wait" custom={direction}><motion.section key={step} custom={direction} initial={{ opacity: 0, x: direction * 32 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction * -32 }} transition={{ duration: .24 }} drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.12} onDragEnd={(_, info) => { if (info.offset.x < -90 && index < steps.length - 2 && step !== 'phone') void next(); else if (info.offset.x > 90) back() }} className="w-full touch-pan-y">
-        <div className="mx-auto max-w-3xl">{step === 'phone' && <PhoneStep verified={data.phoneVerified} onVerified={() => { update({ phoneVerified: true }); advanceAfterPhone() }} error={errors.phoneVerified} />}
+      <AnimatePresence mode="wait" custom={direction}><motion.section key={step} custom={direction} initial={reduceMotion ? false : { opacity: 0, x: direction * 32 }} animate={{ opacity: 1, x: 0 }} exit={reduceMotion ? undefined : { opacity: 0, x: direction * -32 }} transition={{ duration: reduceMotion ? 0 : .24 }} drag={reduceMotion ? false : 'x'} dragConstraints={{ left: 0, right: 0 }} dragElastic={0.12} onDragEnd={(_, info) => { if (info.offset.x < -90 && index < steps.length - 2 && step !== 'email') void next(); else if (info.offset.x > 90) back() }} className="w-full touch-pan-y">
+        <div className="mx-auto max-w-3xl">{step === 'email' && <EmailStep onVerified={() => { update({ emailAuthenticated: true }); advanceAfterEmail() }} error={errors.emailAuthenticated} />}
         {step === 'mode' && <Screen title="First, what brings you here?" eyebrow="Let’s set the scene"><div className="grid gap-4 md:grid-cols-2"><BigChoice selected={data.mode === 'have-flat'} onClick={() => update({ mode: 'have-flat' })} title="I have a flat" body="I need a flatmate to join my place." /><BigChoice selected={data.mode === 'need-flat'} onClick={() => update({ mode: 'need-flat' })} title="I need a flat" body="I need a flat and a flatmate." /></div><FieldError message={errors.mode} /></Screen>}
         {step === 'basics' && <Screen title="The basics, please." eyebrow="A little context helps"><div className="grid gap-5 md:grid-cols-2"><label className="field">Name<input value={data.name} onChange={(e) => update({ name: e.target.value })} placeholder="Your name, as friends know it" /> <FieldError message={errors.name} /></label><label className="field">Gender<select value={data.gender} onChange={(e) => update({ gender: e.target.value })}><option value="">Select one</option><option>Woman</option><option>Man</option><option>Non-binary</option><option>Prefer not to say</option></select><FieldError message={errors.gender} /></label><label className="field">Date of birth<input type="date" value={data.dob} onChange={(e) => update({ dob: e.target.value })} /><FieldError message={errors.dob} /></label><label className="field">City<select value={data.city} onChange={(e) => update({ city: e.target.value })}><option value="">Choose your city</option>{cities.map((city) => <option key={city}>{city}</option>)}</select><FieldError message={errors.city} /></label><label className="field md:col-span-2">Occupation<input value={data.occupation} onChange={(e) => update({ occupation: e.target.value })} placeholder="What fills your weekdays?" /><FieldError message={errors.occupation} /></label></div></Screen>}
         {step === 'budget' && <Screen title="What feels comfortable?" eyebrow="Monthly rent, in INR"><div className="rounded-3xl border-2 border-black bg-white p-5 md:p-8"><div className="mb-8 flex items-end justify-between"><div><p className="text-sm font-bold uppercase tracking-widest">Budget range</p><p className="font-display text-4xl font-black">₹{data.minBudget.toLocaleString('en-IN')} — ₹{data.maxBudget.toLocaleString('en-IN')}</p></div><span className="rounded-full bg-[#c8ff3d] px-3 py-1 text-xs font-bold">per month</span></div><div className="grid gap-5 md:grid-cols-2"><label className="field">Minimum<input type="range" min="5000" max="80000" step="1000" value={data.minBudget} onChange={(e) => update({ minBudget: Math.min(Number(e.target.value), data.maxBudget) })} /><span className="font-mono text-sm">₹{data.minBudget.toLocaleString('en-IN')}</span></label><label className="field">Maximum<input type="range" min="10000" max="100000" step="1000" value={data.maxBudget} onChange={(e) => update({ maxBudget: Math.max(Number(e.target.value), data.minBudget) })} /><span className="font-mono text-sm">₹{data.maxBudget.toLocaleString('en-IN')}</span></label></div></div><label className="field mt-6">Move-in date<input type="date" value={data.moveInDate} onChange={(e) => update({ moveInDate: e.target.value })} /><FieldError message={errors.moveInDate} /></label></Screen>}
@@ -69,8 +70,7 @@ export function OnboardingFlow() {
         {step === 'done' && <div className="text-center"><div className="mx-auto mb-8 grid h-24 w-24 place-items-center rounded-full border-2 border-black bg-[#c8ff3d]"><PartyPopper size={42} /></div><h1 className="font-display text-5xl font-black md:text-7xl">Profile ready.</h1><p className="mx-auto mt-4 max-w-md text-lg">We’re finding the people who will make home feel like home.</p>{saving && <p className="mt-5 font-mono text-sm">Saving your profile...</p>}</div>}</div>
       </motion.section></AnimatePresence>
     </div>
-    {step !== 'done' && step !== 'phone' && <div className="sticky bottom-0 border-t-2 border-black bg-[#f4efe6]/95 px-4 py-4 backdrop-blur md:px-8"><div className="mx-auto flex max-w-3xl justify-end"><button type="button" onClick={next} className="flex items-center gap-2 rounded-full border-2 border-black bg-[#ff4d2e] px-6 py-3 font-bold text-white shadow-[4px_4px_0_#111] hover:translate-x-0.5 hover:translate-y-0.5">{index === steps.length - 2 ? 'Finish profile' : 'Next'} <ChevronRight size={18} /></button></div></div>}
-    <div id="recaptcha-container" />
+    {step !== 'done' && step !== 'email' && <div className="sticky bottom-0 border-t-2 border-black bg-[#f4efe6]/95 px-4 py-4 backdrop-blur md:px-8"><div className="mx-auto flex max-w-3xl justify-end"><button type="button" onClick={next} className="flex items-center gap-2 rounded-full border-2 border-black bg-[#ff4d2e] px-6 py-3 font-bold text-white shadow-[4px_4px_0_#111] hover:translate-x-0.5 hover:translate-y-0.5">{index === steps.length - 2 ? 'Finish profile' : 'Next'} <ChevronRight size={18} /></button></div></div>}
   </main>
 }
 
@@ -78,84 +78,65 @@ function Screen({ title, eyebrow, children }: { title: string; eyebrow: string; 
 function BigChoice({ title, body, selected, onClick }: { title: string; body: string; selected: boolean; onClick: () => void }) { return <button type="button" onClick={onClick} className={`rounded-3xl border-2 border-black p-6 text-left shadow-[5px_5px_0_#111] transition hover:-translate-y-1 ${selected ? 'bg-[#ff4d2e] text-white' : 'bg-white'}`}><div className="mb-8 flex justify-end">{selected && <span className="grid h-8 w-8 place-items-center rounded-full bg-[#c8ff3d] text-black"><Check size={18} /></span>}</div><p className="font-display text-3xl font-black">{title}</p><p className="mt-2 max-w-xs opacity-80">{body}</p></button> }
 function formatTime(hour: number) { const normalized = hour % 24; const suffix = normalized >= 12 ? 'PM' : 'AM'; const shown = normalized % 12 || 12; return `${shown}:00 ${suffix}` }
 
-function PhoneStep({ verified, onVerified, error }: { verified: boolean; onVerified: () => void; error?: string }) {
-  const [phone, setPhone] = useState('')
-  const [otp, setOtp] = useState('')
-  const [sent, setSent] = useState(false)
-  const [sending, setSending] = useState(false)
-  const [verifying, setVerifying] = useState(false)
+function EmailStep({ onVerified, error }: { onVerified: () => void; error?: string }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isCreatingAccount, setIsCreatingAccount] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
-  const confirmationRef = useRef<ConfirmationResult | null>(null)
-  const verifierRef = useRef<RecaptchaVerifier | null>(null)
 
-  const sendCode = async () => {
+  const authenticate = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     setLocalError(null)
-    const digits = phone.replace(/\D/g, '')
-    if (digits.length !== 10) { setLocalError('Enter a 10-digit mobile number'); return }
-    if (!isFirebaseConfigured()) { setLocalError('Phone sign-in is not configured yet'); return }
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail) { setLocalError('Enter your email address'); return }
+    if (password.length < (isCreatingAccount ? 8 : 6)) { setLocalError(isCreatingAccount ? 'Use at least 8 characters for your password' : 'Enter your password'); return }
+    if (!isFirebaseConfigured()) { setLocalError('Email sign-in is not configured yet'); return }
+
     try {
-      setSending(true)
+      setLoading(true)
       const auth = getFirebaseAuth()
-      // why: Firebase requires a reCAPTCHA verifier per sign-in attempt; reuse once ready.
-      if (!verifierRef.current) {
-        verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' })
-      }
-      const result = await signInWithPhoneNumber(auth, `+91${digits}`, verifierRef.current)
-      confirmationRef.current = result
-      setSent(true)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not send code'
-      setLocalError(message)
-    } finally {
-      setSending(false)
-    }
-  }
-
-  const confirmCode = async () => {
-    setLocalError(null)
-    if (otp.length !== 6) { setLocalError('Enter the 6-digit code'); return }
-    if (!confirmationRef.current) { setLocalError('Request a code first'); return }
-    try {
-      setVerifying(true)
-      const credential = await confirmationRef.current.confirm(otp)
-      const idToken = await credential.user.getIdToken()
-      await firebaseVerify(idToken)
+      const credential = isCreatingAccount
+        ? await createUserWithEmailAndPassword(auth, normalizedEmail, password)
+        : await signInWithEmailAndPassword(auth, normalizedEmail, password)
+      await firebaseVerify(await credential.user.getIdToken())
       onVerified()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Code did not match'
-      setLocalError(message)
+    } catch (authError) {
+      const code = typeof authError === 'object' && authError !== null && 'code' in authError ? String(authError.code) : ''
+      const messages: Record<string, string> = {
+        'auth/email-already-in-use': 'An account already uses this email. Try signing in instead.',
+        'auth/invalid-credential': 'Email or password is incorrect. Check them and try again.',
+        'auth/invalid-email': 'Enter a valid email address.',
+        'auth/weak-password': 'Choose a stronger password with at least 8 characters.',
+        'auth/too-many-requests': 'Too many attempts. Wait a moment, then try again.',
+        'auth/operation-not-allowed': 'Email and password sign-in is not enabled for this Firebase project yet.',
+      }
+      setLocalError(messages[code] ?? (authError instanceof Error ? authError.message : 'Could not sign you in. Try again.'))
     } finally {
-      setVerifying(false)
+      setLoading(false)
     }
   }
 
-  return <Screen title="Verify your number." eyebrow="One quick check first">
+  return <Screen title={isCreatingAccount ? 'Find your people.' : 'Welcome back.'} eyebrow="Your next home starts here">
     <div className="rounded-3xl border-2 border-black bg-white p-6 md:p-8">
-      {!sent && <>
-        <label className="field">Mobile number
-          <div className="flex items-center gap-2">
-            <span className="rounded-2xl border-2 border-black bg-[#f4efe6] px-3 py-3 font-mono text-sm">+91</span>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" inputMode="numeric" maxLength={10} className="flex-1" />
-          </div>
+      <div className="mb-6 flex gap-2 rounded-2xl border-2 border-black bg-[#f4efe6] p-1" role="group" aria-label="Account access">
+        <button type="button" aria-pressed={isCreatingAccount} onClick={() => { setIsCreatingAccount(true); setLocalError(null) }} className={`flex-1 rounded-xl px-4 py-3 text-sm font-bold transition-colors ${isCreatingAccount ? 'bg-[#c8ff3d]' : 'hover:bg-white/70'}`}>Create account</button>
+        <button type="button" aria-pressed={!isCreatingAccount} onClick={() => { setIsCreatingAccount(false); setLocalError(null) }} className={`flex-1 rounded-xl px-4 py-3 text-sm font-bold transition-colors ${!isCreatingAccount ? 'bg-[#c8ff3d]' : 'hover:bg-white/70'}`}>Sign in</button>
+      </div>
+      <form onSubmit={authenticate} className="flex flex-col gap-5">
+        <label className="field">Email address
+          <span className="relative block"><Mail aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 opacity-55" size={18} /><input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="pl-11" /></span>
         </label>
-        <button type="button" onClick={sendCode} disabled={sending} className="mt-6 inline-flex items-center gap-2 rounded-full border-2 border-black bg-[#ff4d2e] px-6 py-3 font-bold text-white shadow-[4px_4px_0_#111] disabled:opacity-60">
-          <Phone size={18} /> {sending ? 'Sending…' : 'Send code'}
+        <label className="field">Password
+          <span className="relative block"><KeyRound aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 opacity-55" size={18} /><input type="password" autoComplete={isCreatingAccount ? 'new-password' : 'current-password'} minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" className="pl-11" /></span>
+        </label>
+        <button type="submit" disabled={loading} className="mt-1 inline-flex items-center justify-center gap-2 rounded-full border-2 border-black bg-[#ff4d2e] px-6 py-3 font-bold text-white shadow-[4px_4px_0_#111] transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60">
+          {isCreatingAccount ? <UserRoundPlus size={18} /> : <KeyRound size={18} />}
+          {loading ? 'Signing you in…' : isCreatingAccount ? 'Create account' : 'Sign in'}
         </button>
-      </>}
-      {sent && !verified && <>
-        <p className="mb-4 text-sm">Code sent to <span className="font-mono">+91 {phone}</span>.</p>
-        <label className="field">6-digit code
-          <input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="123456" inputMode="numeric" maxLength={6} className="font-mono" />
-        </label>
-        <div className="mt-6 flex items-center gap-3">
-          <button type="button" onClick={confirmCode} disabled={verifying} className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-[#ff4d2e] px-6 py-3 font-bold text-white shadow-[4px_4px_0_#111] disabled:opacity-60">
-            <ShieldCheck size={18} /> {verifying ? 'Verifying…' : 'Verify'}
-          </button>
-          <button type="button" onClick={() => { setSent(false); setOtp(''); confirmationRef.current = null }} className="text-sm font-bold underline">Change number</button>
-        </div>
-      </>}
-      {verified && <p className="font-mono text-sm text-[#2f8a47]">Verified. Moving on…</p>}
+      </form>
       <FieldError message={localError ?? error} />
+      <p className="mt-5 text-xs leading-relaxed text-black/60">Your password is secured by Firebase. We never store it in your Flatmate profile.</p>
     </div>
   </Screen>
 }
