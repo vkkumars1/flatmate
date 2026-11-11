@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import './globals.css'
 import { AppShell } from '@/components/app-shell'
+import { AuthBoot } from '@/components/auth-boot'
 
 export const metadata: Metadata = {
   title: 'FlatFit — Find your kind of home',
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body>
+        <AuthBoot />
         <AppShell>{children}</AppShell>
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
         {process.env.NODE_ENV === 'production' && <Analytics />}
