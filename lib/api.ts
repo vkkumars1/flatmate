@@ -1,8 +1,16 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
-let accessToken: string | null = null
+const STORAGE_KEY = 'ff.at'
+
+let accessToken: string | null =
+  typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null
 let refreshing = false
 
-export function setAccessToken(token: string | null) { accessToken = token }
+export function setAccessToken(token: string | null) {
+  accessToken = token
+  if (typeof window === 'undefined') return
+  if (token) window.localStorage.setItem(STORAGE_KEY, token)
+  else window.localStorage.removeItem(STORAGE_KEY)
+}
 export function getAccessToken() { return accessToken }
 export function getApiUrl() { return API_URL }
 
@@ -13,8 +21,9 @@ async function refresh() {
     const response = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' })
     if (!response.ok) return false
     const data = await response.json()
-    accessToken = data.accessToken ?? null
-    return Boolean(accessToken)
+    const next = data.accessToken ?? null
+    setAccessToken(next)
+    return Boolean(next)
   } finally { refreshing = false }
 }
 
