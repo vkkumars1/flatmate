@@ -98,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const reduce = useReducedMotion()
   useEffect(() => {
     if (reduce) return
-    const lenis = new Lenis({ duration: 1.1 })
+    const lenis = new Lenis({ duration: 0.85, smoothWheel: true, syncTouch: true, touchInertiaExponent: 1.6 })
     let frame = 0
     const raf = (time: number) => {
       lenis.raf(time)

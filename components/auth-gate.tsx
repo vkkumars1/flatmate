@@ -1,16 +1,18 @@
 'use client'
 
 import Link from 'next/link'
+import { motion, useReducedMotion } from 'framer-motion'
 import { usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/auth'
 import { Lock } from 'lucide-react'
 
 const PUBLIC_PREFIXES = ['/', '/waking-up', '/onboarding', '/not-found', '/error']
-const PROTECTED_PREFIXES = ['/discover', '/matches', '/listings/new', '/profile', '/admin', '/pricing']
+const PROTECTED_PREFIXES = ['/discover', '/matches', '/listings', '/profile', '/admin', '/pricing']
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const user = useAuthStore((s) => s.user)
+  const reduceMotion = useReducedMotion()
 
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
   const isPublic = PUBLIC_PREFIXES.includes(pathname)
@@ -23,12 +25,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       <div aria-hidden className="pointer-events-none select-none blur-md saturate-50 brightness-95">
         {children}
       </div>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#111]/30 backdrop-blur-sm px-5">
-        <div className="w-full max-w-md border-2 border-[#111] bg-[#f4efe6] p-7 shadow-[6px_6px_0_#111]">
+      <motion.div role="dialog" aria-modal="true" aria-labelledby="auth-gate-title" className="fixed inset-0 z-50 flex items-center justify-center bg-[#111]/35 px-5 backdrop-blur-md" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }}>
+        <motion.div className="w-full max-w-md border-2 border-[#111] bg-[#f4efe6] p-7 shadow-[6px_6px_0_#111]" initial={reduceMotion ? false : { opacity: 0, y: 18, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: .24, ease: 'easeOut' }}>
           <div className="mb-4 inline-flex items-center gap-2 border border-[#111] bg-[#c8ff3d] px-2 py-1 font-mono text-[9px] uppercase tracking-[.18em]">
             <Lock size={12} strokeWidth={3} /> Sign in required
           </div>
-          <h2 className="font-display text-3xl font-extrabold tracking-[-.04em]">
+          <h2 id="auth-gate-title" className="font-display text-3xl font-extrabold tracking-[-.04em]">
             Verify your phone to continue
           </h2>
           <p className="mt-3 text-sm text-[#111]/70">
@@ -46,8 +48,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           >
             Back to home
           </Link>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   )
 }
