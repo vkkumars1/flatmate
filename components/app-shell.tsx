@@ -6,9 +6,10 @@ import { Compass, Heart, Home, UserRound, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import useSWR from 'swr'
 import { AuthGate } from './auth-gate'
 import { useAuthStore } from '@/store/auth'
-import { logout } from '@/lib/auth-api'
+import { hydrateSession, logout } from '@/lib/auth-api'
 
 const tabs = [
   { label: 'Discover', href: '/discover', icon: Compass },
@@ -96,6 +97,7 @@ function TabBar() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const reduce = useReducedMotion()
+  const { isLoading: sessionLoading } = useSWR('flatmate-session', hydrateSession, { revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false })
   useEffect(() => {
     if (reduce) return
     const lenis = new Lenis({ duration: 0.85, smoothWheel: true, syncTouch: true, touchInertiaExponent: 1.6 })
@@ -121,7 +123,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           exit={{ opacity: 0 }}
           transition={{ duration: reduce ? 0 : 0.2 }}
         >
-          <AuthGate>{children}</AuthGate>
+          <AuthGate isHydrating={sessionLoading}>{children}</AuthGate>
         </motion.main>
       </AnimatePresence>
       <TabBar />

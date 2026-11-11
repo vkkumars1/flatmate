@@ -9,16 +9,16 @@ import { Lock } from 'lucide-react'
 const PUBLIC_PREFIXES = ['/', '/waking-up', '/onboarding', '/not-found', '/error']
 const PROTECTED_PREFIXES = ['/discover', '/matches', '/listings', '/profile', '/admin', '/pricing']
 
-export function AuthGate({ children }: { children: React.ReactNode }) {
+export function AuthGate({ children, isHydrating = false }: { children: React.ReactNode; isHydrating?: boolean }) {
   const pathname = usePathname()
   const user = useAuthStore((s) => s.user)
   const reduceMotion = useReducedMotion()
 
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
   const isPublic = PUBLIC_PREFIXES.includes(pathname)
-  const needsGate = isProtected && !user && !isPublic
 
-  if (!needsGate) return <>{children}</>
+  if (!isProtected || isPublic || user) return <>{children}</>
+  if (isHydrating) return <div role="status" aria-live="polite" aria-busy="true" className="grid min-h-[60vh] place-items-center font-mono text-xs uppercase tracking-[.18em]">Checking your sign-in…</div>
 
   return (
     <div className="relative">

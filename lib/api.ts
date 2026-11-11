@@ -31,7 +31,14 @@ export async function api<T>(path: string, init: RequestInit = {}, retried = fal
     if (response.status === 401 && !retried && await refresh()) return api<T>(path, init, true)
     if (!response.ok) {
       const text = await response.text().catch(() => '')
-      const msg = response.status >= 500 ? 'Something went wrong on our end.' : response.status === 429 ? 'Slow down a bit.' : text || 'Request failed'
+      let serverMessage = ''
+      try {
+        const body = JSON.parse(text) as { error?: { message?: unknown } }
+        if (typeof body.error?.message === 'string') serverMessage = body.error.message
+      } catch {
+        serverMessage = text
+      }
+      const msg = response.status >= 500 ? 'Something went wrong on our end.' : response.status === 429 ? 'Slow down a bit.' : serverMessage || 'Request failed'
       throw new Error(msg)
     }
     const ct = response.headers.get('content-type') ?? ''

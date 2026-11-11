@@ -6,8 +6,12 @@
 body { transition: background-color .25s ease, color .25s ease; }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-input:not([type='range']):not([type='checkbox']):not([type='radio']), textarea, select { transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease; }
-input:not([type='range']):not([type='checkbox']):not([type='radio']):focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid var(--tomato); outline-offset: 2px; }
+.field { display: flex; flex-direction: column; gap: .55rem; font-size: .9rem; font-weight: 700; }
+.field input:not([type='range']):not([type='checkbox']):not([type='radio']), .field textarea, .field select { width: 100%; min-width: 0; border: 0; border-bottom: 2px solid color-mix(in srgb, var(--ink) 28%, transparent); border-radius: .75rem .75rem 0 0; background: color-mix(in srgb, var(--paper) 42%, white); color: var(--ink); padding: .85rem 1rem; }
+:is(input:not([type='range']):not([type='checkbox']):not([type='radio']), textarea, select) { transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease; outline: 2px solid transparent; outline-offset: 3px; }
+:is(input:not([type='range']):not([type='checkbox']):not([type='radio']), textarea, select):focus { outline-color: transparent; border-bottom-color: var(--tomato) !important; box-shadow: 0 3px 0 var(--tomato), 0 0 0 3px color-mix(in srgb, var(--tomato) 14%, transparent); }
+/* Keep keyboard focus visible with a color cue, not a default outline. */
+input[type='range']:focus-visible, input[type='checkbox']:focus-visible, input[type='radio']:focus-visible { outline: 2px solid transparent; outline-offset: 3px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--tomato) 35%, transparent); }
 input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--ink) 45%, transparent); font-style: italic; opacity: 1; }
 @media (hover: hover) { a, button { -webkit-tap-highlight-color: transparent; } }
 
