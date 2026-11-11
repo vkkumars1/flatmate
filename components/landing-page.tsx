@@ -34,9 +34,9 @@ function Hero() {
   const reduce = useReducedMotion()
   return <section className="relative mx-auto flex min-h-[calc(100vh-88px)] max-w-7xl flex-col justify-center overflow-hidden px-5 pb-24 pt-14 md:px-8 md:pt-20">
     <Sticker color="bg-[#c8ff3d]" className="right-[7%] top-[14%] rotate-6 motion-safe:animate-[float_4s_ease-in-out_infinite]">No smoking</Sticker>
-    <Sticker color="bg-[#bfe3ff]" className="right-[18%] top-[28%] -rotate-6 motion-safe:animate-[float_5s_ease-in-out_infinite_reverse]">Night owl</Sticker>
-    <Sticker color="bg-[#ff4d2e] text-white" className="right-[5%] top-[52%] rotate-3">Dishes done</Sticker>
-    <Sticker color="bg-white" className="right-[28%] top-[67%] -rotate-3">Pet friendly</Sticker>
+  <Sticker color="bg-[#bfe3ff]" className="right-[18%] top-[28%] hidden -rotate-6 motion-safe:animate-[float_5s_ease-in-out_infinite_reverse] md:block">Night owl</Sticker>
+  <Sticker color="bg-[#ff4d2e] text-white" className="right-[5%] top-[52%] hidden rotate-3 md:block">Dishes done</Sticker>
+  <Sticker color="bg-white" className="right-[28%] top-[67%] hidden -rotate-3 md:block">Pet friendly</Sticker>
     <Reveal><p className="mb-6 inline-block rotate-[-2deg] border-2 border-[#111] bg-[#bfe3ff] px-3 py-2 font-mono text-[10px] font-bold uppercase shadow-[4px_4px_0_#111]">Flatmates, but make it fit</p></Reveal>
     <Reveal delay={.06}><h1 className="max-w-5xl font-display text-[clamp(4.2rem,12vw,10.5rem)] font-extrabold leading-[.8] tracking-[-.1em]">Don&apos;t adopt a <span className="font-serif font-normal italic text-[#ff4d2e]">full-grown child</span>.</h1></Reveal>
     <Reveal delay={.12}><p className="mt-8 max-w-lg text-lg leading-relaxed text-[#111]/70 md:text-xl">Find a flatmate who matches your habits, budget, and very specific opinions about leaving the fan on.</p></Reveal>
