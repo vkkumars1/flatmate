@@ -135,7 +135,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             Continue with Google
           </button>
 
-          {error && <p className="mt-4 text-center font-mono text-[11px] text-[#ff4d2e]">{error}</p>}
+          {error && <p role="alert" className="mt-4 text-center font-mono text-[11px] text-[#ff4d2e]">{error}</p>}
 
           <button
             type="button"
