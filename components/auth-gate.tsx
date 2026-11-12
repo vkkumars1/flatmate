@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { Mail, Lock } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { signInWithGoogle } from '@/lib/google-signin'
-import { signInWithEmail, signUpWithEmail } from '@/lib/email-auth'
+import { signInEmail, signUpEmail } from '@/lib/email-auth'
 
 const PUBLIC_PREFIXES = ['/', '/waking-up']
 
@@ -46,10 +46,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     try {
       setBusy(true)
       if (mode === 'signup') {
-        await signUpWithEmail(email, password)
+        await signUpEmail(email, password)
         setInfo('Account created. A verification email is on the way.')
       } else {
-        await signInWithEmail(email, password)
+        await signInEmail(email, password)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Authentication failed')
