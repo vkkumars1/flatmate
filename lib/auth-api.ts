@@ -1,4 +1,4 @@
-import { api, setAccessToken } from './api'
+import { api, getApiUrl, setAccessToken } from './api'
 import { useAuthStore } from '@/store/auth'
 
 type AuthUser = { id: string; name: string; role: string; plan: string; email?: string; phone?: string }
@@ -33,7 +33,9 @@ export async function logout() {
 
 export async function tryRefresh() {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ''}/auth/refresh`, { method: 'POST', credentials: 'include' })
+    const apiUrl = getApiUrl()
+    if (!apiUrl) return null
+    const response = await fetch(`${apiUrl}/auth/refresh`, { method: 'POST', credentials: 'include' })
     if (!response.ok) return null
     const data = await response.json() as { accessToken: string; user?: AuthUser }
     if (!data.accessToken) return null

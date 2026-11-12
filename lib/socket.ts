@@ -1,7 +1,7 @@
 import { io, type Socket } from 'socket.io-client'
 import { getAccessToken } from './api'
 
-const URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? process.env.NEXT_PUBLIC_API_URL ?? ''
+const URL = (process.env.NEXT_PUBLIC_SOCKET_URL ?? process.env.NEXT_PUBLIC_API_URL ?? '').trim().replace(/\/+$/, '')
 let socket: Socket | null = null
 
 export function getSocket(): Socket {

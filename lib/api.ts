@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
+const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? '').trim().replace(/\/+$/, '')
 const STORAGE_KEY = 'ff.at'
 
 let accessToken: string | null =
@@ -39,6 +39,7 @@ async function refresh() {
 }
 
 export async function api<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
+  if (!API_URL) throw new Error('The account service is not configured for this build.')
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 10000)
   try {
@@ -50,15 +51,24 @@ export async function api<T>(path: string, init: RequestInit = {}, retried = fal
     })
     if (response.status === 401 && !retried && await refresh()) return api<T>(path, init, true)
     if (!response.ok) {
-      const text = await response.text().catch(() => '')
-      const msg = response.status >= 500 ? 'Something went wrong on our end.' : response.status === 429 ? 'Slow down a bit.' : text || 'Request failed'
+      const contentType = response.headers.get('content-type') ?? ''
+      let message = ''
+      if (contentType.includes('application/json')) {
+        const body = await response.json().catch(() => null) as { message?: string; error?: string | { message?: string } } | null
+        message = body?.message ?? (typeof body?.error === 'string' ? body.error : body?.error?.message) ?? ''
+      } else {
+        const text = await response.text().catch(() => '')
+        if (text.trim() && !/^\s*<!doctype html|^\s*<html/i.test(text)) message = text.trim().slice(0, 240)
+      }
+      const msg = response.status >= 500 ? 'Something went wrong on our end.' : response.status === 429 ? 'Slow down a bit.' : message || `Request failed (${response.status})`
       throw new Error(msg)
     }
     const ct = response.headers.get('content-type') ?? ''
     if (ct.includes('application/json')) return response.json()
     return undefined as unknown as T
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') throw new Error('WAKING_UP')
+    if (error instanceof DOMException && error.name === 'AbortError') throw new Error('The account service is taking too long to respond. Try again in a moment.')
+    if (error instanceof TypeError && error.message === 'Failed to fetch') throw new Error('Unable to reach the account service. Please try again.')
     throw error
   } finally { clearTimeout(timeout) }
 }
