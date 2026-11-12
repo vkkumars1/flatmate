@@ -25,12 +25,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [info, setInfo] = useState<string | null>(null)
 
   if (isPublic(pathname) || user) return <>{children}</>
 
   async function handleGoogle() {
-    setError(null); setInfo(null)
+    setError(null)
     try { setBusy(true); await signInWithGoogle() }
     catch (e) { setError(e instanceof Error ? e.message : 'Sign-in failed') }
     finally { setBusy(false) }
@@ -38,7 +37,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault()
-    setError(null); setInfo(null)
+    setError(null)
     if (!email.includes('@') || password.length < 6) {
       setError('Enter a valid email and password of at least 6 characters.')
       return
@@ -47,7 +46,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       setBusy(true)
       if (mode === 'signup') {
         await signUpEmail(email, password)
-        setInfo('Account created. A verification email is on the way.')
       } else {
         await signInEmail(email, password)
       }
@@ -138,7 +136,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           </button>
 
           {error && <p className="mt-4 text-center font-mono text-[11px] text-[#ff4d2e]">{error}</p>}
-          {info && <p className="mt-4 text-center font-mono text-[11px] text-[#2f8a47]">{info}</p>}
 
           <button
             type="button"

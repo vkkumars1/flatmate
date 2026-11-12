@@ -98,7 +98,7 @@ export function clearInMemoryStore() {
 
 export async function getAgreement(matchId: string) {
   if (USE_MOCKS) { await wait(); return { id: `agreement-${matchId}`, matchId, rules: ['Quiet hours after 11pm', 'Split utilities equally'], acceptedBy: [] as string[] } }
-  return api(`/matches/${encodeURIComponent(matchId)}/agreement`)
+  return api<{ id: string; matchId: string; rules: string[]; acceptedBy: string[] }>(`/matches/${encodeURIComponent(matchId)}/agreement`)
 }
 
 export async function saveAgreement(matchId: string, rules: string[]) {
