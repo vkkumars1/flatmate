@@ -7,7 +7,7 @@ let profileStore: Record<string, unknown> = { ...mockUser, bio: '', plan: 'FREE'
 
 const wait = (min = 300, max = 700) => new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min))
 
-type DiscoverItem = { userId: string; name: string; age: number; city: string; photos?: { id: string; url: string }[]; score: number; topReasons: string[]; lifestyleChips: { label: string; same: boolean }[]; budgetMin: number; budgetMax: number }
+type DiscoverItem = { userId: string; name: string; age: number; city: string; photos?: string[]; score: number; topReasons: string[]; lifestyleChips: { label: string; same: boolean }[]; budgetMin: number; budgetMax: number }
 
 export async function getDiscover(cursor?: string) {
   if (USE_MOCKS) {
@@ -40,8 +40,18 @@ export async function getMatches() {
     await wait()
     return mockMatches.map((match, index) => ({ matchId: match.id, otherUser: { id: `u_${index + 1}`, name: match.name, age: 26 + index, city: match.locality, occupation: ['Product designer', 'Architect', 'Brand strategist', 'Software engineer'][index % 4], avatar: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><rect width="160" height="160" fill="${index % 2 ? '#bfe3ff' : '#c8ff3d'}"/><circle cx="80" cy="62" r="32" fill="#111"/><path d="M22 154c5-40 28-58 58-58s53 18 58 58" fill="#111"/></svg>`)}` }, score: match.score, lastMessage: ['Your kitchen rules are a green flag.', 'Want to compare move-in dates?', 'I also believe in a quiet Sunday.', 'That neighborhood sounds perfect.'][index % 4], unreadCount: index === 0 ? 2 : index === 2 ? 1 : 0 }))
   }
-  const result = await api<{ items: unknown[]; nextCursor?: string }>('/matches')
-  return result.items
+  const result = await api<{ items: any[]; nextCursor?: string }>('/matches')
+  return result.items.map((match) => ({
+    ...match,
+    otherUser: {
+      ...match.otherUser,
+      age: match.otherUser?.age ?? 0,
+      city: match.otherUser?.city ?? '',
+      occupation: match.otherUser?.occupation ?? '',
+      avatar: match.otherUser?.avatar ?? '/placeholder-user.jpg',
+    },
+    lastMessage: typeof match.lastMessage === 'string' ? match.lastMessage : match.lastMessage?.text ?? '',
+  }))
 }
 
 export async function getMessages(matchId: string) {
@@ -89,6 +99,27 @@ export async function getProfile() {
 export async function saveProfile(data: Partial<typeof mockUser> & Record<string, unknown>) {
   if (USE_MOCKS) { await wait(); profileStore = { ...profileStore, ...data }; return { ...profileStore } }
   return api('/me/profile', { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function saveLifestyle(data: { sleepTime: number; wakeTime: number; cleanliness: number; smoking: boolean; drinking: boolean; pets: boolean; diet: string; guestsLevel: number; noiseLevel: number; cooking: string }) {
+  if (USE_MOCKS) { await wait(); profileStore = { ...profileStore, lifestyle: data }; return data }
+  return api('/me/lifestyle', { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function saveDealBreakers(data: { key: string; value: string }[]) {
+  if (USE_MOCKS) { await wait(); profileStore = { ...profileStore, dealBreakers: data }; return data }
+  return api('/me/deal-breakers', { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function uploadProfilePhoto(file: File) {
+  if (USE_MOCKS) return URL.createObjectURL(file)
+  const upload = await api<{ uploadUrl: string; path: string; publicUrl: string }>('/me/photos/upload-url', {
+    method: 'POST',
+    body: JSON.stringify({ fileType: file.type, fileSize: file.size, purpose: 'profile' }),
+  })
+  const response = await fetch(upload.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file })
+  if (!response.ok) throw new Error('A photo could not be uploaded. Try it again.')
+  return upload.publicUrl || upload.path
 }
 
 export function clearInMemoryStore() {

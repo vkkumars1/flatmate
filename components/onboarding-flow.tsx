@@ -1,15 +1,17 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { BrushCleaning, Check, ChevronLeft, ChevronRight, CloudUpload, Moon, PartyPopper, Phone, ShieldCheck, Sun, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { BrushCleaning, Check, ChevronLeft, ChevronRight, CloudUpload, PartyPopper, Phone, ShieldCheck, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth'
 import { signInWithGoogle } from '@/lib/google-signin'
-import { saveProfile } from '@/lib/mock-api'
+import { clearOnboardingDraft, loadOnboardingDraft, saveOnboardingDraft } from '@/lib/onboarding-draft'
+import { saveDealBreakers, saveLifestyle, saveProfile, uploadProfilePhoto } from '@/lib/mock-api'
 import { firebaseVerify } from '@/lib/auth-api'
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase-client'
 import { onboardingSchemas, type OnboardingData, type OnboardingStep } from '@/lib/schemas'
+import { DayNightScene } from '@/components/day-night-scene'
 
 const steps: OnboardingStep[] = ['mode', 'basics', 'budget', 'sleep', 'cleanliness', 'habits', 'dealBreakers', 'photos', 'bio', 'done']
 const cities = ['Gurugram', 'Bangalore', 'Pune', 'Delhi', 'Mumbai']
@@ -27,25 +29,87 @@ export function OnboardingFlow() {
   const [direction, setDirection] = useState(1)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
+  const [draftReady, setDraftReady] = useState(false)
+  const [draftSaved, setDraftSaved] = useState(false)
+  const reduceMotion = useReducedMotion()
   const step = steps[index]
   const progress = index === steps.length - 1 ? 100 : Math.round((index / (steps.length - 1)) * 100)
 
-  const update = (patch: Partial<OnboardingData>) => { setData((current) => ({ ...current, ...patch })); setErrors({}) }
+  useEffect(() => {
+    let active = true
+    void loadOnboardingDraft().then((draft) => {
+      if (!active) return
+      if (draft) {
+        setData({ ...initialData, ...draft.data, photos: draft.data.photos ?? [] })
+        setIndex(Math.max(0, Math.min(draft.stepIndex, steps.length - 2)))
+      }
+      setDraftReady(true)
+    }).catch(() => { if (active) setDraftReady(true) })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (!draftReady || index === steps.length - 1) return
+    const timeout = window.setTimeout(() => {
+      void saveOnboardingDraft({ data, stepIndex: index }).then(() => setDraftSaved(true)).catch(() => setDraftSaved(false))
+    }, 350)
+    return () => window.clearTimeout(timeout)
+  }, [data, draftReady, index])
+
+  const update = (patch: Partial<OnboardingData>) => { setData((current) => ({ ...current, ...patch })); setErrors({}); setDraftSaved(false) }
   const validate = () => {
     const result = onboardingSchemas[step].safeParse(data)
     if (result.success) { setErrors({}); return true }
-    const next: Record<string, string> = {}
-    result.error.issues.forEach((issue) => { next[String(issue.path[0] ?? step)] = issue.message })
-    setErrors(next)
+    const nextErrors: Record<string, string> = {}
+    result.error.issues.forEach((issue) => { nextErrors[String(issue.path[0] ?? step)] = issue.message })
+    setErrors(nextErrors)
     return false
   }
   const next = async () => {
-    if (!validate()) return
-    if (step === 'done') return
-    if (index === steps.length - 2) setSaving(true)
-    if (index === steps.length - 2) { await saveProfile({ name: data.name, city: data.city, bio: data.bio, onboarding: data }); setSaving(false) }
-    setDirection(1); setIndex((current) => current + 1)
-    if (index === steps.length - 2) setTimeout(() => router.push('/discover'), 1600)
+    if (saving || !validate() || step === 'done') return
+    const finishing = index === steps.length - 2
+    if (finishing) {
+      setSaving(true)
+      setErrors({})
+      try {
+        const photos = await Promise.all(data.photos.map(uploadProfilePhoto))
+        await saveProfile({
+          name: data.name,
+          gender: data.gender,
+          dob: data.dob,
+          city: data.city,
+          occupation: data.occupation,
+          bio: data.bio,
+          mode: data.mode === 'have-flat' ? 'HAS_FLAT' : 'NEEDS_FLAT',
+          budgetMin: data.minBudget,
+          budgetMax: data.maxBudget,
+          moveInDate: data.moveInDate,
+          photos,
+        })
+        await saveLifestyle({
+          sleepTime: (data.sleepTime % 24) * 60,
+          wakeTime: (data.wakeTime % 24) * 60,
+          cleanliness: data.cleanliness,
+          smoking: Boolean(data.habits.smoking),
+          drinking: Boolean(data.habits.drinking),
+          pets: Boolean(data.habits.pets),
+          diet: data.habits.diet ? 'vegetarian' : 'any',
+          guestsLevel: data.habits.guests ? 4 : 3,
+          noiseLevel: data.habits.noise ? 4 : 3,
+          cooking: data.habits.cooking ? 'yes' : 'flexible',
+        })
+        await saveDealBreakers(data.dealBreakers.map((key) => ({ key, value: 'avoid' })))
+        await clearOnboardingDraft()
+      } catch (error) {
+        setErrors({ submit: error instanceof Error ? error.message : 'We could not save your profile. Please try again.' })
+        setSaving(false)
+        return
+      }
+      setSaving(false)
+    }
+    setDirection(1)
+    setIndex((current) => current + 1)
+    if (finishing) window.setTimeout(() => router.push('/discover'), 1600)
   }
   const back = () => { if (index === 0) return; setDirection(-1); setIndex((current) => current - 1) }
 
@@ -53,30 +117,29 @@ export function OnboardingFlow() {
 
   return <main className="min-h-screen bg-[#f4efe6] text-[#111]">
     <header className="sticky top-0 z-30 border-b-2 border-black bg-[#f4efe6]/95 px-4 py-4 backdrop-blur md:px-8">
-      <div className="mx-auto flex max-w-5xl items-center gap-4"><button type="button" aria-label="Go back" onClick={back} disabled={index === 0} className="grid h-11 w-11 place-items-center rounded-full border-2 border-black bg-white disabled:opacity-30"><ChevronLeft size={20} /></button><div className="flex-1"><div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-[0.16em]"><span>Build your flatmate profile</span><span className="font-mono">{index + 1}/{steps.length}</span></div><div className="h-3 overflow-hidden rounded-full border-2 border-black bg-white"><motion.div className="h-full bg-[#ff4d2e]" animate={{ width: `${progress}%` }} transition={{ type: 'spring', stiffness: 100, damping: 18 }} /></div></div></div>
+      <div className="mx-auto flex max-w-5xl items-center gap-4"><button type="button" aria-label="Go back" onClick={back} disabled={index === 0 || !draftReady || saving} className="grid h-11 w-11 place-items-center rounded-full border-2 border-black bg-white disabled:opacity-30"><ChevronLeft size={20} /></button><div className="flex-1"><div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-[0.16em]"><span>Build your flatmate profile</span><span className="font-mono">{draftReady && draftSaved ? 'Draft saved' : `${index + 1}/${steps.length}`}</span></div><div className="h-3 overflow-hidden rounded-full border-2 border-black bg-white"><motion.div className="h-full bg-[#ff4d2e]" animate={{ width: `${progress}%` }} transition={{ type: 'spring', stiffness: 100, damping: 18 }} /></div></div></div>
     </header>
     <div className="mx-auto flex min-h-[calc(100vh-91px)] max-w-5xl items-center px-4 py-10 md:px-8">
-      <AnimatePresence mode="wait" custom={direction}><motion.section key={step} custom={direction} initial={{ opacity: 0, x: direction * 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction * -40 }} transition={{ duration: .28 }} className="w-full">
+      {draftReady ? <AnimatePresence mode="wait" custom={direction}><motion.section key={step} custom={direction} initial={{ opacity: 0, x: direction * 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction * -40 }} transition={{ duration: reduceMotion ? 0 : .28 }} className="w-full">
         <div className="mx-auto max-w-3xl">{step === 'mode' && <Screen title="First, what brings you here?" eyebrow="Let’s set the scene"><div className="grid gap-4 md:grid-cols-2"><BigChoice selected={data.mode === 'have-flat'} onClick={() => update({ mode: 'have-flat' })} title="I have a flat" body="I need a flatmate to join my place." /><BigChoice selected={data.mode === 'need-flat'} onClick={() => update({ mode: 'need-flat' })} title="I need a flat" body="I need a flat and a flatmate." /></div><FieldError message={errors.mode} /></Screen>}
         {step === 'basics' && <Screen title="The basics, please." eyebrow="A little context helps"><div className="grid gap-5 md:grid-cols-2"><label className="field">Name<input value={data.name} onChange={(e) => update({ name: e.target.value })} placeholder="What should we call you?" /> <FieldError message={errors.name} /></label><label className="field">Gender<select value={data.gender} onChange={(e) => update({ gender: e.target.value })}><option value="">Select one</option><option>Woman</option><option>Man</option><option>Non-binary</option><option>Prefer not to say</option></select><FieldError message={errors.gender} /></label><label className="field">Date of birth<input type="date" value={data.dob} onChange={(e) => update({ dob: e.target.value })} /><FieldError message={errors.dob} /></label><label className="field">City<select value={data.city} onChange={(e) => update({ city: e.target.value })}><option value="">Choose your city</option>{cities.map((city) => <option key={city}>{city}</option>)}</select><FieldError message={errors.city} /></label><label className="field md:col-span-2">Occupation<input value={data.occupation} onChange={(e) => update({ occupation: e.target.value })} placeholder="Designer, founder, student..." /><FieldError message={errors.occupation} /></label></div></Screen>}
         {step === 'budget' && <Screen title="What feels comfortable?" eyebrow="Monthly rent, in INR"><div className="rounded-3xl border-2 border-black bg-white p-5 md:p-8"><div className="mb-8 flex items-end justify-between"><div><p className="text-sm font-bold uppercase tracking-widest">Budget range</p><p className="font-display text-4xl font-black">₹{data.minBudget.toLocaleString('en-IN')} — ₹{data.maxBudget.toLocaleString('en-IN')}</p></div><span className="rounded-full bg-[#c8ff3d] px-3 py-1 text-xs font-bold">per month</span></div><div className="grid gap-5 md:grid-cols-2"><label className="field">Minimum<input type="range" min="5000" max="80000" step="1000" value={data.minBudget} onChange={(e) => update({ minBudget: Math.min(Number(e.target.value), data.maxBudget) })} /><span className="font-mono text-sm">₹{data.minBudget.toLocaleString('en-IN')}</span></label><label className="field">Maximum<input type="range" min="10000" max="100000" step="1000" value={data.maxBudget} onChange={(e) => update({ maxBudget: Math.max(Number(e.target.value), data.minBudget) })} /><span className="font-mono text-sm">₹{data.maxBudget.toLocaleString('en-IN')}</span></label></div></div><label className="field mt-6">Move-in date<input type="date" value={data.moveInDate} onChange={(e) => update({ moveInDate: e.target.value })} /><FieldError message={errors.moveInDate} /></label></Screen>}
-        {step === 'sleep' && <Screen title="When does your day start?" eyebrow="No judgement, just compatibility"><div className="relative mx-auto h-64 max-w-xl overflow-hidden rounded-3xl border-2 border-black bg-[#bfe3ff] p-6"><div className="absolute inset-x-12 top-16 h-40 rounded-[50%] border-2 border-dashed border-black/50" /><div className="absolute left-8 top-8 rounded-full bg-[#c8ff3d] p-3"><Sun /></div><div className="absolute right-8 top-8 rounded-full bg-[#f4efe6] p-3"><Moon /></div><div className="absolute inset-x-8 bottom-8 grid gap-5 md:grid-cols-2"><label className="field">Sleep time<input type="range" min="18" max="28" value={data.sleepTime} onChange={(e) => update({ sleepTime: Number(e.target.value) })} /><span>{formatTime(data.sleepTime)}</span></label><label className="field">Wake time<input type="range" min="5" max="12" value={data.wakeTime} onChange={(e) => update({ wakeTime: Number(e.target.value) })} /><span>{formatTime(data.wakeTime)}</span></label></div></div></Screen>}
+        {step === 'sleep' && <Screen title="When does your day start?" eyebrow="No judgement, just compatibility"><DayNightScene data={data} update={update} reduceMotion={Boolean(reduceMotion)} /></Screen>}
         {step === 'cleanliness' && <Screen title="How tidy are we talking?" eyebrow="Pick your broom level"><div className="flex flex-wrap justify-center gap-3 rounded-3xl border-2 border-black bg-[#c8ff3d] p-8">{[1, 2, 3, 4, 5].map((level) => <button type="button" key={level} aria-label={`${level} out of 5`} onClick={() => update({ cleanliness: level })} className={`grid h-16 w-16 place-items-center rounded-2xl border-2 border-black ${data.cleanliness >= level ? 'bg-[#ff4d2e] text-white' : 'bg-[#f4efe6]'}`}><BrushCleaning size={28} /></button>)}</div><FieldError message={errors.cleanliness} /></Screen>}
         {step === 'habits' && <Screen title="Your flatmate non-negotiables?" eyebrow="Tap to toggle"><div className="flex flex-wrap gap-3">{habits.map((habit, index) => <Sticker key={habit} tone={index % 2 ? 'sky' : 'lime'} selected={data.habits[habit] === true} onClick={() => update({ habits: { ...data.habits, [habit]: !data.habits[habit] } })}>{habitLabels[habit]}</Sticker>)}</div><FieldError message={errors.habits} /></Screen>}
         {step === 'dealBreakers' && <Screen title="What is a hard no?" eyebrow="These people will never show up"><div className="flex flex-wrap gap-3">{habits.map((habit) => <Sticker key={habit} selected={data.dealBreakers.includes(habit)} onClick={() => update({ dealBreakers: data.dealBreakers.includes(habit) ? data.dealBreakers.filter((item) => item !== habit) : [...data.dealBreakers, habit] })}>{data.dealBreakers.includes(habit) ? 'Never ' : ''}{habitLabels[habit]}</Sticker>)}</div><FieldError message={errors.dealBreakers} /></Screen>}
         {step === 'photos' && <PhotoStep data={data} update={update} error={errors.photos} />}
         {step === 'bio' && <Screen title="Give your future flatmate the gist." eyebrow="Keep it real"><label className="field"><textarea value={data.bio} maxLength={300} onChange={(e) => update({ bio: e.target.value })} placeholder="What makes living with you a good idea?" rows={7} /><div className="mt-2 flex justify-between text-sm"><FieldError message={errors.bio} /><span className="font-mono">{data.bio.length}/300</span></div></label></Screen>}
         {step === 'done' && <div className="text-center"><div className="mx-auto mb-8 grid h-24 w-24 place-items-center rounded-full border-2 border-black bg-[#c8ff3d]"><PartyPopper size={42} /></div><h1 className="font-display text-5xl font-black md:text-7xl">Profile ready.</h1><p className="mx-auto mt-4 max-w-md text-lg">We’re finding the people who will make home feel like home.</p>{saving && <p className="mt-5 font-mono text-sm">Saving your profile...</p>}</div>}</div>
-      </motion.section></AnimatePresence>
+      </motion.section></AnimatePresence> : <p role="status" className="mx-auto max-w-3xl text-center text-sm text-black/55">Restoring your saved profile…</p>}
     </div>
-    {step !== 'done' && <div className="sticky bottom-0 border-t-2 border-black bg-[#f4efe6]/95 px-4 py-4 backdrop-blur md:px-8"><div className="mx-auto flex max-w-3xl justify-end"><button type="button" onClick={next} className="flex items-center gap-2 rounded-full border-2 border-black bg-[#ff4d2e] px-6 py-3 font-bold text-white shadow-[4px_4px_0_#111] hover:translate-x-0.5 hover:translate-y-0.5">{index === steps.length - 2 ? 'Finish profile' : 'Next'} <ChevronRight size={18} /></button></div></div>}
+    {step !== 'done' && <div className="sticky bottom-0 border-t border-black/10 bg-[#f4efe6]/90 px-4 py-4 backdrop-blur-xl md:px-8"><div className="mx-auto flex max-w-3xl items-center justify-between gap-4"><p aria-live="polite" className="min-h-5 text-sm text-[#d92d20]">{errors.submit}</p><button type="button" onClick={() => void next()} disabled={!draftReady || saving} className="flex shrink-0 items-center gap-2 rounded-full bg-[#ff4d2e] px-6 py-3 font-bold text-white shadow-[0_12px_28px_-14px_#ff4d2e] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_-14px_#ff4d2e] disabled:cursor-wait disabled:opacity-60">{saving ? 'Saving your profile…' : index === steps.length - 2 ? 'Finish profile' : 'Next'} <ChevronRight size={18} /></button></div></div>}
     <div id="recaptcha-container" />
   </main>
 }
 
 function Screen({ title, eyebrow, children }: { title: string; eyebrow: string; children: React.ReactNode }) { return <div><p className="mb-3 font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#ff4d2e]">{eyebrow}</p><h1 className="mb-8 max-w-3xl font-display text-5xl font-black leading-[.95] md:text-7xl">{title}</h1>{children}</div> }
 function BigChoice({ title, body, selected, onClick }: { title: string; body: string; selected: boolean; onClick: () => void }) { return <button type="button" onClick={onClick} className={`rounded-3xl border-2 border-black p-6 text-left shadow-[5px_5px_0_#111] transition hover:-translate-y-1 ${selected ? 'bg-[#ff4d2e] text-white' : 'bg-white'}`}><div className="mb-8 flex justify-end">{selected && <span className="grid h-8 w-8 place-items-center rounded-full bg-[#c8ff3d] text-black"><Check size={18} /></span>}</div><p className="font-display text-3xl font-black">{title}</p><p className="mt-2 max-w-xs opacity-80">{body}</p></button> }
-function formatTime(hour: number) { const normalized = hour % 24; const suffix = normalized >= 12 ? 'PM' : 'AM'; const shown = normalized % 12 || 12; return `${shown}:00 ${suffix}` }
 
 function PhoneStep({ verified, onVerified, error }: { verified: boolean; onVerified: () => void; error?: string }) {
   const [phone, setPhone] = useState('')
