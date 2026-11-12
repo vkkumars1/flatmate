@@ -3,7 +3,7 @@ const STORAGE_KEY = 'ff.at'
 
 let accessToken: string | null =
   typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null
-let refreshing = false
+let refreshPromise: Promise<boolean> | null = null
 
 export function setAccessToken(token: string | null) {
   accessToken = token
@@ -15,16 +15,27 @@ export function getAccessToken() { return accessToken }
 export function getApiUrl() { return API_URL }
 
 async function refresh() {
-  if (refreshing) return false
-  refreshing = true
+  if (refreshPromise) return refreshPromise
+
+  const pending = (async () => {
+    try {
+      const response = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' })
+      if (!response.ok) return false
+      const data = await response.json()
+      const next = data.accessToken ?? null
+      setAccessToken(next)
+      return Boolean(next)
+    } catch {
+      return false
+    }
+  })()
+
+  refreshPromise = pending
   try {
-    const response = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' })
-    if (!response.ok) return false
-    const data = await response.json()
-    const next = data.accessToken ?? null
-    setAccessToken(next)
-    return Boolean(next)
-  } finally { refreshing = false }
+    return await pending
+  } finally {
+    if (refreshPromise === pending) refreshPromise = null
+  }
 }
 
 export async function api<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {

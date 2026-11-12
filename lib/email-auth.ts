@@ -1,4 +1,5 @@
 import { api, setAccessToken } from './api'
+import { useAuthStore } from '@/store/auth'
 
 export type AuthResponse = {
   accessToken: string
@@ -12,6 +13,7 @@ export async function signUpWithEmail(email: string, password: string, name?: st
     body: JSON.stringify({ email: email.trim().toLowerCase(), password, ...(name ? { name } : {}) }),
   })
   setAccessToken(result.accessToken)
+  useAuthStore.getState().setSession(result.user as never, result.accessToken)
   return result
 }
 
@@ -21,6 +23,7 @@ export async function signInWithEmail(email: string, password: string) {
     body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
   })
   setAccessToken(result.accessToken)
+  useAuthStore.getState().setSession(result.user as never, result.accessToken)
   return result
 }
 
