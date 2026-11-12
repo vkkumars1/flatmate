@@ -6,7 +6,7 @@ export type AuthResponse = {
   isNewUser: boolean
 }
 
-export async function signUpEmail(email: string, password: string, name?: string) {
+export async function signUpWithEmail(email: string, password: string, name?: string) {
   const result = await api<AuthResponse>('/auth/email/signup', {
     method: 'POST',
     body: JSON.stringify({ email: email.trim().toLowerCase(), password, ...(name ? { name } : {}) }),
@@ -15,7 +15,7 @@ export async function signUpEmail(email: string, password: string, name?: string
   return result
 }
 
-export async function signInEmail(email: string, password: string) {
+export async function signInWithEmail(email: string, password: string) {
   const result = await api<AuthResponse>('/auth/email/signin', {
     method: 'POST',
     body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
@@ -23,3 +23,6 @@ export async function signInEmail(email: string, password: string) {
   setAccessToken(result.accessToken)
   return result
 }
+
+export const signUpEmail = signUpWithEmail
+export const signInEmail = signInWithEmail
