@@ -13,6 +13,7 @@ export function setAccessToken(token: string | null) {
 }
 export function getAccessToken() { return accessToken }
 export function getApiUrl() { return API_URL }
+export function isDemoMode() { return process.env.NEXT_PUBLIC_USE_MOCKS === 'true' || !API_URL }
 
 async function refresh() {
   if (refreshPromise) return refreshPromise
