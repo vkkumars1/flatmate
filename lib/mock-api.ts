@@ -7,7 +7,7 @@ let profileStore: Record<string, unknown> = { ...mockUser, bio: '', plan: 'FREE'
 
 const wait = (min = 300, max = 700) => new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min))
 
-type DiscoverItem = { userId: string; name: string; age: number; city: string; photos?: { id: string; url: string }[]; score: number; topReasons: string[]; lifestyleChips: { label: string; same: boolean }[]; budgetMin: number; budgetMax: number }
+type DiscoverItem = { userId: string; name: string; age: number | null; city: string; photos?: string[]; score: number; topReasons: string[]; lifestyleChips: { label: string; same: boolean }[]; budgetMin: number; budgetMax: number }
 
 export async function getDiscover(cursor?: string) {
   if (USE_MOCKS) {
@@ -40,8 +40,12 @@ export async function getMatches() {
     await wait()
     return mockMatches.map((match, index) => ({ matchId: match.id, otherUser: { id: `u_${index + 1}`, name: match.name, age: 26 + index, city: match.locality, occupation: ['Product designer', 'Architect', 'Brand strategist', 'Software engineer'][index % 4], avatar: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><rect width="160" height="160" fill="${index % 2 ? '#bfe3ff' : '#c8ff3d'}"/><circle cx="80" cy="62" r="32" fill="#111"/><path d="M22 154c5-40 28-58 58-58s53 18 58 58" fill="#111"/></svg>`)}` }, score: match.score, lastMessage: ['Your kitchen rules are a green flag.', 'Want to compare move-in dates?', 'I also believe in a quiet Sunday.', 'That neighborhood sounds perfect.'][index % 4], unreadCount: index === 0 ? 2 : index === 2 ? 1 : 0 }))
   }
-  const result = await api<{ items: unknown[]; nextCursor?: string }>('/matches')
-  return result.items
+  const result = await api<{ items: Array<{ matchId: string; otherUser: { id: string; name: string; age: number | null; city: string | null; occupation: string | null; avatar: string | null }; score: number; lastMessage: { text?: string } | null; unreadCount: number }>; nextCursor?: string }>('/matches')
+  return result.items.map((match) => ({
+    ...match,
+    otherUser: { ...match.otherUser, name: match.otherUser.name ?? 'Flatmate', city: match.otherUser.city ?? '', occupation: match.otherUser.occupation ?? '', avatar: match.otherUser.avatar ?? '' },
+    lastMessage: match.lastMessage?.text ?? 'Say hello to your match',
+  }))
 }
 
 export async function getMessages(matchId: string) {
@@ -91,19 +95,47 @@ export async function saveProfile(data: Partial<typeof mockUser> & Record<string
   return api('/me/profile', { method: 'PUT', body: JSON.stringify(data) })
 }
 
+export async function saveLifestyle(data: { sleepTime: number; wakeTime: number; cleanliness: number; smoking: boolean; drinking: boolean; pets: boolean; diet: string; guestsLevel: number; noiseLevel: number; cooking: string }) {
+  if (USE_MOCKS) { await wait(); profileStore = { ...profileStore, lifestyle: data }; return { ok: true } }
+  return api('/me/lifestyle', { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function saveDealBreakers(items: string[]) {
+  const data = items.map((key) => ({ key, value: 'true' }))
+  if (USE_MOCKS) { await wait(); profileStore = { ...profileStore, dealBreakers: data }; return { ok: true } }
+  return api('/me/deal-breakers', { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function uploadPhoto(file: File, purpose: 'profile' | 'listing') {
+  if (USE_MOCKS) throw new Error('Photo uploads need an account connection.')
+  const signed = await api<{ uploadUrl: string; path: string; publicUrl: string }>('/me/photos/upload-url', {
+    method: 'POST',
+    body: JSON.stringify({ fileType: file.type, fileSize: file.size, purpose }),
+  })
+  const response = await fetch(signed.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type, 'x-upsert': 'true' },
+    body: file,
+  })
+  if (!response.ok) throw new Error('Photo upload failed. Please try again.')
+  return { path: signed.path, publicUrl: signed.publicUrl }
+}
+
 export function clearInMemoryStore() {
   profileStore = { ...mockUser, bio: '', plan: 'FREE', phone: true, email: false, selfie: false }
   if (!USE_MOCKS) { api('/auth/logout', { method: 'POST' }).catch(() => {}) }
 }
 
+export type AgreementRecord = { id: string; matchId: string; rules: string[]; acceptedByA: boolean; acceptedByB: boolean }
+
 export async function getAgreement(matchId: string) {
-  if (USE_MOCKS) { await wait(); return { id: `agreement-${matchId}`, matchId, rules: ['Quiet hours after 11pm', 'Split utilities equally'], acceptedBy: [] as string[] } }
-  return api<{ id: string; matchId: string; rules: string[]; acceptedBy: string[] }>(`/matches/${encodeURIComponent(matchId)}/agreement`)
+  if (USE_MOCKS) { await wait(); return { id: `agreement-${matchId}`, matchId, rules: ['Quiet hours after 11pm', 'Split utilities equally'], acceptedByA: false, acceptedByB: false } satisfies AgreementRecord }
+  return api<AgreementRecord | null>(`/matches/${encodeURIComponent(matchId)}/agreement`)
 }
 
 export async function saveAgreement(matchId: string, rules: string[]) {
-  if (USE_MOCKS) { await wait(); return { id: `agreement-${matchId}`, matchId, rules, acceptedBy: [] as string[] } }
-  return api(`/matches/${encodeURIComponent(matchId)}/agreement`, { method: 'POST', body: JSON.stringify({ rules }) })
+  if (USE_MOCKS) { await wait(); return { id: `agreement-${matchId}`, matchId, rules, acceptedByA: false, acceptedByB: false } satisfies AgreementRecord }
+  return api<AgreementRecord>(`/matches/${encodeURIComponent(matchId)}/agreement`, { method: 'POST', body: JSON.stringify({ rules }) })
 }
 
 export async function acceptAgreement(id: string) {

@@ -5,9 +5,14 @@ const URL = (process.env.NEXT_PUBLIC_SOCKET_URL ?? process.env.NEXT_PUBLIC_API_U
 let socket: Socket | null = null
 
 export function getSocket(): Socket {
-  if (socket && socket.connected) return socket
-  const token = getAccessToken()
-  socket = io(URL, { auth: { token }, autoConnect: true, transports: ['websocket', 'polling'], withCredentials: true })
+  if (socket) {
+    if (!socket.connected && !socket.active) {
+      socket.auth = { token: getAccessToken() }
+      socket.connect()
+    }
+    return socket
+  }
+  socket = io(URL, { auth: { token: getAccessToken() }, autoConnect: true, transports: ['websocket', 'polling'], withCredentials: true })
   return socket
 }
 

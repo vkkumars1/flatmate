@@ -75,6 +75,7 @@ function Navbar() {
 
 function TabBar() {
   const pathname = usePathname()
+  if (pathname.startsWith('/onboarding')) return null
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 border-t-2 border-[#111] bg-[#f4efe6] pb-[env(safe-area-inset-bottom)] md:hidden">
       {tabs.map(({ label, href, icon: Icon }) => (
