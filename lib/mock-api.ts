@@ -1,7 +1,7 @@
 import { mockListings, mockMatches, mockUser } from './mocks'
-import { api } from './api'
+import { api, isDemoMode } from './api'
 
-const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
+const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true' || isDemoMode()
 
 let profileStore: Record<string, unknown> = { ...mockUser, bio: '', plan: 'FREE', phone: true, email: false, selfie: false }
 
