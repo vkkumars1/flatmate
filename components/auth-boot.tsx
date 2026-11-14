@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { hydrateSession } from '@/lib/auth-api'
+import { completeGoogleRedirect } from '@/lib/google-signin'
 import { useAuthStore } from '@/store/auth'
 
 export function AuthBoot() {
@@ -9,7 +10,11 @@ export function AuthBoot() {
   useEffect(() => {
     if (ran.current) return
     ran.current = true
-    void hydrateSession().finally(() => useAuthStore.getState().markSessionHydrated())
+    const run = async () => {
+      try { await completeGoogleRedirect() } catch {}
+      await hydrateSession()
+    }
+    void run().finally(() => useAuthStore.getState().markSessionHydrated())
   }, [])
   return null
 }
