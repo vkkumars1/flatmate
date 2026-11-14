@@ -5,6 +5,10 @@
 .dark { --paper: #15120f; --ink: #f4efe6; color-scheme: dark; }
 body { transition: background-color .25s ease, color .25s ease; }
 * { box-sizing: border-box; }
+input:not([type='range']):not([type='file']), select, textarea { transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease; }
+input:not([type='range']):not([type='file']):hover, select:hover, textarea:hover { border-color: var(--tomato); }
+input:not([type='range']):not([type='file']):focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--tomato); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'DM Sans', sans-serif; }
 .field { display: flex; flex-direction: column; gap: .55rem; color: color-mix(in srgb, var(--ink) 78%, transparent); font-size: .95rem; font-weight: 600; }

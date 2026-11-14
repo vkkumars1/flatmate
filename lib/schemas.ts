@@ -13,13 +13,13 @@ export const onboardingStepSchema = {
   cleanliness: z.object({ cleanliness: z.number().min(1, 'Pick your broom level').max(5) }),
   habits: z.object({ habits: z.record(z.string(), z.boolean()).refine((value) => Object.keys(value).length > 0, 'Choose at least one habit') }),
   dealBreakers: z.object({ dealBreakers: z.array(z.string()).min(1, 'Pick at least one deal-breaker') }),
-  photos: z.object({ photos: z.array(z.instanceof(File)).min(1, 'Add at least one photo').max(3, 'Add up to three photos') }),
+  photos: z.object({ photos: z.array(z.instanceof(File)).max(3, 'Add up to three photos'), uploadedPhotos: z.array(z.string().min(1)).max(3).default([]) }).refine((value) => value.photos.length + value.uploadedPhotos.length > 0, { path: ['photos'], message: 'Add at least one photo' }),
   bio: z.object({ bio: bioSchema.min(20, 'Give your bio a little more detail') }),
   done: z.object({}),
 }
 
 export type OnboardingStep = keyof typeof onboardingStepSchema
-export type OnboardingData = { mode: string; name: string; gender: string; dob: string; city: string; occupation: string; minBudget: number; maxBudget: number; moveInDate: string; sleepTime: number; wakeTime: number; cleanliness: number; habits: Record<string, boolean>; dealBreakers: string[]; photos: File[]; bio: string }
+export type OnboardingData = { mode: string; name: string; gender: string; dob: string; city: string; occupation: string; minBudget: number; maxBudget: number; moveInDate: string; sleepTime: number; wakeTime: number; cleanliness: number; habits: Record<string, boolean>; dealBreakers: string[]; photos: File[]; uploadedPhotos: string[]; bio: string }
 export const onboardingSchemas = onboardingStepSchema as { [key in OnboardingStep]: z.ZodTypeAny }
 export type LoginInput = z.infer<typeof loginSchema>
 export type ProfileInput = z.infer<typeof profileSchema>

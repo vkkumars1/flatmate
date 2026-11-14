@@ -8,7 +8,7 @@ import { openRazorpayCheckout } from '@/lib/razorpay'
 const plans = [
   { name: 'Free', price: '₹0', color: 'bg-[#f4efe6]', features: ['3 discover likes / day', 'Basic compatibility', 'Chat after matching'] },
   { name: 'Verified', price: '₹199', color: 'bg-[#bfe3ff]', features: ['Unlimited likes', 'Verified badge', 'Advanced filters', 'Priority support'] },
-  { name: 'Boost', price: '₹99', color: 'bg-[#c8ff3d]', features: ['30-minute visibility boost', 'Top of discover stack', 'Everything in Verified'] },
+  { name: 'Boost', price: '₹299', color: 'bg-[#c8ff3d]', features: ['30-minute visibility boost', 'Top of discover stack', 'Everything in Verified'] },
 ]
 
 function toPlanEnum(name: string): Plan {
@@ -16,7 +16,6 @@ function toPlanEnum(name: string): Plan {
 }
 
 export function PricingPage() {
-  const [billing, setBilling] = useState<'monthly' | 'once'>('monthly')
   const [modal, setModal] = useState<string | null>(null)
   const [paid, setPaid] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -60,7 +59,7 @@ export function PricingPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not start checkout')
     } finally {
-      if (!modal) setBusy(false)
+      setBusy(false)
     }
   }
 
@@ -70,10 +69,7 @@ export function PricingPage() {
         <p className="font-mono text-xs uppercase tracking-[0.25em] text-[#ff4d2e]">FlatFit plans</p>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-5">
           <h1 className="text-5xl font-black tracking-tight">Pick your <i className="font-serif font-normal">advantage.</i></h1>
-          <div className="flex border-2 border-[#111] p-1 shadow-[3px_3px_0_#111]">
-            <button onClick={() => setBilling('monthly')} className={`px-4 py-2 font-mono text-xs uppercase ${billing === 'monthly' ? 'bg-[#111] text-[#f4efe6]' : ''}`}>Monthly</button>
-            <button onClick={() => setBilling('once')} className={`px-4 py-2 font-mono text-xs uppercase ${billing === 'once' ? 'bg-[#111] text-[#f4efe6]' : ''}`}>One-time</button>
-          </div>
+          <p className="font-mono text-xs font-bold uppercase tracking-wider text-[#111]/60">One-time payments · secured by Razorpay</p>
         </div>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {plans.map((plan, index) => (
@@ -83,8 +79,8 @@ export function PricingPage() {
                 {index === 1 && <span className="border-2 border-[#111] bg-[#ff4d2e] px-2 py-1 font-mono text-[10px] uppercase text-white">Popular</span>}
               </div>
               <p className="mt-8 text-5xl font-black">
-                {index === 0 ? '₹0' : billing === 'monthly' ? plan.price : '₹99'}
-                <span className="text-sm font-normal"> {index === 0 ? 'forever' : billing === 'monthly' ? '/ month' : 'once'}</span>
+                {plan.price}
+                <span className="text-sm font-normal"> {index === 0 ? 'forever' : 'one-time'}</span>
               </p>
               <button onClick={() => (index === 0 ? setPaid(true) : setModal(plan.name))} className="mt-8 w-full border-2 border-[#111] bg-[#111] px-4 py-3 font-mono text-xs uppercase text-white">
                 {index === 0 ? 'Current plan' : 'Choose ' + plan.name}
@@ -113,7 +109,7 @@ export function PricingPage() {
         {modal && (
           <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-center bg-[#111]/60 p-5">
             <div className="w-full max-w-md border-2 border-[#111] bg-[#f4efe6] p-6 text-[#111] shadow-[7px_7px_0_#111]">
-              <p className="border-2 border-[#111] bg-[#ff4d2e] p-3 font-mono text-xs uppercase text-white">Razorpay test mode: use card 4111 1111 1111 1111</p>
+              <p className="border-2 border-[#111] bg-[#ff4d2e] p-3 font-mono text-xs uppercase text-white">Secure Razorpay checkout · amount verified by the server</p>
               <h2 className="mt-6 text-3xl font-black">Confirm {modal}</h2>
               <p className="mt-2">You&apos;ll open Razorpay checkout. Your plan upgrades after payment succeeds.</p>
               {error && <p className="mt-3 border-2 border-[#111] bg-white p-2 font-mono text-xs text-[#ff4d2e]">{error}</p>}

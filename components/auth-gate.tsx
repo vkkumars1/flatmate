@@ -21,6 +21,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const user = useAuthStore((s) => s.user)
+  const sessionHydrated = useAuthStore((s) => s.sessionHydrated)
   const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -28,6 +29,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   if (isPublic(pathname) || user) return <>{children}</>
+  if (!sessionHydrated) return <div className="grid min-h-[60vh] place-items-center bg-[#f4efe6] px-6 text-center font-mono text-xs uppercase tracking-[0.16em] text-[#111]/60" role="status">Restoring your session…</div>
 
   async function handleGoogle() {
     setError(null)

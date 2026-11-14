@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { api, isDemoMode } from "@/lib/api"
 
 export const listingPhotoSchema = z.object({
   id: z.string(),
@@ -17,6 +18,8 @@ export const listingSchema = z.object({
   amenities: z.array(z.string()),
   bills: z.number(),
   description: z.string(),
+  ownerId: z.string().optional(),
+  deposit: z.number().optional(),
 })
 
 export type Listing = z.infer<typeof listingSchema>
@@ -32,24 +35,59 @@ const listings: Listing[] = [
   { id: "listing-5", title: "Sea breeze 2BHK", city: "Mumbai", locality: "Andheri West", rent: 26000, verified: false, availableFrom: "2027-01-01", bills: 3600, amenities: ["Sea breeze", "Gym", "Lift"], description: "A warm, lived-in home near the action, with a living room that actually fits more than two people.", photos: [photo("1600607687920-4e2a09cf159d", 0), photo("1600210491892-03d54c0aaf87", 1), photo("1600566753190-17f0baa2a6c3", 2)].map((url, i) => ({ id: `${i}`, url })) },
 ]
 
+function normalizeListing(value: Record<string, unknown>): Listing {
+  const photos = Array.isArray(value.photos) ? value.photos.map((photo, index) => typeof photo === 'string' ? { id: String(index), url: photo } : photo as { id: string; url: string }) : []
+  return listingSchema.parse({
+    id: String(value.id ?? ''), title: String(value.title ?? ''), city: String(value.city ?? ''), locality: String(value.locality ?? ''),
+    rent: Number(value.rent ?? 0), photos, verified: Boolean(value.verified), availableFrom: String(value.availableFrom ?? ''),
+    amenities: Array.isArray(value.amenities) ? value.amenities.map(String) : [], bills: Number(value.bills ?? 0),
+    description: String(value.description ?? ''), ownerId: typeof value.ownerId === 'string' ? value.ownerId : undefined,
+    deposit: Number(value.deposit ?? 0),
+  })
+}
+
 export async function getListings(filters: { city?: string; min?: number; max?: number; verified?: boolean; cursor?: string } = {}) {
-  await new Promise((resolve) => setTimeout(resolve, 350))
-  const filtered = listings.filter((listing) => !filters.city || filters.city === "All cities" || listing.city === filters.city)
-    .filter((listing) => filters.min === undefined || listing.rent >= filters.min)
-    .filter((listing) => filters.max === undefined || listing.rent <= filters.max)
-    .filter((listing) => !filters.verified || listing.verified)
-  const start = filters.cursor ? 2 : 0
-  return { items: filtered.slice(start, start + 4), nextCursor: start + 4 < filtered.length ? "page-2" : undefined }
+  if (isDemoMode()) {
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    const filtered = listings.filter((listing) => !filters.city || filters.city === 'All cities' || listing.city === filters.city)
+      .filter((listing) => filters.min === undefined || listing.rent >= filters.min)
+      .filter((listing) => filters.max === undefined || listing.rent <= filters.max)
+      .filter((listing) => !filters.verified || listing.verified)
+    const start = filters.cursor ? 2 : 0
+    return { items: filtered.slice(start, start + 4), nextCursor: start + 4 < filtered.length ? 'page-2' : undefined }
+  }
+  const params = new URLSearchParams()
+  if (filters.city && filters.city !== 'All cities') params.set('city', filters.city)
+  if (filters.min !== undefined) params.set('min', String(filters.min))
+  if (filters.max !== undefined) params.set('max', String(filters.max))
+  if (filters.verified) params.set('verified', 'true')
+  if (filters.cursor) params.set('cursor', filters.cursor)
+  const result = await api<{ items: Record<string, unknown>[]; nextCursor?: string | null }>(`/listings${params.size ? `?${params.toString()}` : ''}`)
+  return { items: result.items.map(normalizeListing), nextCursor: result.nextCursor ?? undefined }
 }
 
 export async function getListing(id: string) {
-  await new Promise((resolve) => setTimeout(resolve, 250))
-  return listings.find((listing) => listing.id === id) ?? listings[0]
+  if (isDemoMode()) {
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    return listings.find((listing) => listing.id === id) ?? listings[0]
+  }
+  const result = await api<Record<string, unknown>>(`/listings/${encodeURIComponent(id)}`)
+  return normalizeListing(result)
 }
 
-export async function createListing(input: Omit<Listing, "id" | "verified"> & { photos: Listing["photos"] }) {
-  await new Promise((resolve) => setTimeout(resolve, 600))
-  return { ...input, id: `listing-${Date.now()}`, verified: false }
+export async function createListing(input: Omit<Listing, 'id' | 'verified' | 'photos'> & { photos: Listing['photos'] | string[] }) {
+  const photoUrls = input.photos.map((photo) => typeof photo === 'string' ? photo : photo.url)
+  if (isDemoMode()) {
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    const listing = normalizeListing({ ...input, photos: photoUrls, id: `listing-${Date.now()}`, verified: false })
+    listings.unshift(listing)
+    return listing
+  }
+  const result = await api<Record<string, unknown>>('/listings', {
+    method: 'POST',
+    body: JSON.stringify({ ...input, photos: photoUrls }),
+  })
+  return normalizeListing(result)
 }
 
 export const mapCenter = [28.4595, 77.0266] as [number, number]
