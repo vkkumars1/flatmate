@@ -2,6 +2,7 @@ export const mockUser = { id: 'u_001', name: 'Aarav Mehta', role: 'user' as cons
 export const mockMatches = [
   { id: 'm_1', name: 'Rhea Kapoor', locality: 'Sector 56, Gurugram', score: 94, tags: ['Early riser', 'Vegetarian'] },
   { id: 'm_2', name: 'Kabir Shah', locality: 'Indiranagar, Bangalore', score: 88, tags: ['WFH', 'Plants'] },
+  { id: 'm_3', name: 'Mira Iyer', locality: 'DLF Phase 3, Gurugram', score: 91, tags: ['Quiet evenings', 'Loves to cook'] },
 ]
 export const mockListings = [
   { id: 'l_1', title: 'Sunny room in a 3BHK', locality: 'Sushant Lok', rent: 18500, available: 'From 01 Dec' },
