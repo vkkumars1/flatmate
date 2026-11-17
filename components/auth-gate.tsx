@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth'
 import { signInWithGoogle } from '@/lib/google-signin'
 import { DEMO_ACCOUNT, signInEmail, signUpEmail } from '@/lib/email-auth'
 import { isDemoMode } from '@/lib/api'
+import { playLoginSound } from '@/lib/sounds'
 
 const PUBLIC_PREFIXES = ['/', '/waking-up']
 
@@ -33,7 +34,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   async function handleGoogle() {
     setError(null)
-    try { setBusy(true); await signInWithGoogle() }
+    try { setBusy(true); await signInWithGoogle(); playLoginSound() }
     catch (e) { setError(e instanceof Error ? e.message : 'Sign-in failed') }
     finally { setBusy(false) }
   }
@@ -52,6 +53,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       } else {
         await signInEmail(email, password)
       }
+      playLoginSound()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Authentication failed')
     } finally {
@@ -66,6 +68,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     try {
       setBusy(true)
       await signInEmail(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password)
+      playLoginSound()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Demo sign-in failed')
     } finally {
@@ -146,7 +149,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               >
                 Sign in with demo account
               </button>
-              <p className="mt-2 text-center font-mono text-[10px] leading-relaxed text-[#111]/60">Demo access is temporary and does not create or save a real account.</p>
+              <p className="mt-2 text-center font-mono text-[10px] leading-relaxed text-[#111]/60">Demo progress and chats are saved in this browser until you log out. Real accounts sync through your account.</p>
             </section>
           )}
 

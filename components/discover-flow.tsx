@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, SlidersHorizontal, Spark
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getDiscover, swipe } from '@/lib/mock-api'
+import { playMatchSound, playSwipeSound } from '@/lib/sounds'
 
 type DiscoverItem = { userId: string; name: string; age: number | null; city: string; photos?: string[]; score: number; topReasons: string[]; lifestyleChips: { label: string; same: boolean }[]; budgetMin: number; budgetMax: number; matchId?: string }
 type SwipeAction = 'like' | 'pass' | 'super'
@@ -60,7 +61,11 @@ export default function DiscoverFlow() {
     setExpanded(null)
     try {
       const result = await swipe(removed.userId, action)
-      if (result.matched && action !== 'pass') setMatch({ ...removed, matchId: result.matchId })
+      playSwipeSound(action !== 'pass')
+      if (result.matched && action !== 'pass') {
+        playMatchSound()
+        setMatch({ ...removed, matchId: result.matchId })
+      }
     } catch {
       setCards((current) => [removed, ...current])
       setToast('That didn’t stick. We put them back.')

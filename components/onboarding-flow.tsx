@@ -11,6 +11,7 @@ import { useAuthStore } from '@/store/auth'
 import { firebaseVerify } from '@/lib/auth-api'
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase-client'
 import { onboardingSchemas, type OnboardingData, type OnboardingStep } from '@/lib/schemas'
+import { playLoginSound } from '@/lib/sounds'
 
 const steps: OnboardingStep[] = ['mode', 'basics', 'budget', 'sleep', 'cleanliness', 'habits', 'dealBreakers', 'photos', 'bio', 'done']
 const cities = ['Gurugram', 'Bangalore', 'Pune', 'Delhi', 'Mumbai']
@@ -60,7 +61,7 @@ export function OnboardingFlow() {
 
   useEffect(() => {
     try {
-      const saved = sessionStorage.getItem(draftKey)
+      const saved = localStorage.getItem(draftKey)
       if (saved) {
         const draft = JSON.parse(saved) as { index?: number; data?: Partial<OnboardingData> }
         if (draft.data) {
@@ -70,7 +71,7 @@ export function OnboardingFlow() {
         }
       }
     } catch {
-      sessionStorage.removeItem(draftKey)
+      localStorage.removeItem(draftKey)
     } finally {
       setDraftReady(true)
     }
@@ -78,8 +79,8 @@ export function OnboardingFlow() {
 
   useEffect(() => {
     if (!resumeReady) return
-    if (step === 'done') { sessionStorage.removeItem(draftKey); return }
-    sessionStorage.setItem(draftKey, JSON.stringify({ index, data: { ...data, photos: [] } }))
+    if (step === 'done') { localStorage.removeItem(draftKey); return }
+    localStorage.setItem(draftKey, JSON.stringify({ index, data: { ...data, photos: [] } }))
   }, [data, index, resumeReady, step])
 
   useEffect(() => {
@@ -149,7 +150,7 @@ export function OnboardingFlow() {
       if (step === 'cleanliness' || step === 'habits') await saveLifestyle(lifestylePayload(data))
       if (step === 'dealBreakers') await saveDealBreakers(data.dealBreakers)
       setSaveStatus('saved')
-      if (step === 'bio') sessionStorage.removeItem(draftKey)
+      if (step === 'bio') localStorage.removeItem(draftKey)
       setDirection(1)
       setIndex((current) => current + 1)
       if (step === 'bio') window.setTimeout(() => router.push('/discover'), 1600)
@@ -244,6 +245,7 @@ function PhoneStep({ verified, onVerified, error }: { verified: boolean; onVerif
     try {
       setGoogleBusy(true)
       await signInWithGoogle()
+      playLoginSound()
       onVerified()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Google sign-in failed'
@@ -285,6 +287,7 @@ function PhoneStep({ verified, onVerified, error }: { verified: boolean; onVerif
       const credential = await confirmationRef.current.confirm(otp)
       const idToken = await credential.user.getIdToken()
       await firebaseVerify(idToken)
+      playLoginSound()
       onVerified()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Code did not match'

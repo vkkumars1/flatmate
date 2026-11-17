@@ -21,6 +21,7 @@ function ChatTab({ matchId, name }: { matchId: string; name: string }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
   const [typing, setTyping] = useState(false)
+  const [read, setRead] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const currentUserId = useAuthStore((state) => state.user?.id)
@@ -33,6 +34,9 @@ function ChatTab({ matchId, name }: { matchId: string; name: string }) {
       if (message.matchId !== matchId) return
       setMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message])
       socket.emit('read', { matchId })
+    }
+    const onRead = (event: { matchId: string }) => {
+      if (event.matchId === matchId) setRead(true)
     }
     const onTyping = (event: { matchId: string; userId: string }) => {
       if (event.matchId !== matchId || event.userId === currentUserId) return
@@ -47,11 +51,13 @@ function ChatTab({ matchId, name }: { matchId: string; name: string }) {
     }).catch(() => { if (active) setError('Could not load this conversation.') })
     socket.on('message', onMessage)
     socket.on('typing', onTyping)
+    socket.on('read', onRead)
     return () => {
       active = false
       window.clearTimeout(typingTimeout)
       socket.off('message', onMessage)
       socket.off('typing', onTyping)
+      socket.off('read', onRead)
     }
   }, [matchId, currentUserId])
 
@@ -63,6 +69,7 @@ function ChatTab({ matchId, name }: { matchId: string; name: string }) {
     try {
       const message = await sendMessage(matchId, parsed.data)
       setMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message as Message])
+      setRead(false)
       setText('')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Message could not be sent.')
@@ -71,7 +78,7 @@ function ChatTab({ matchId, name }: { matchId: string; name: string }) {
     }
   }
 
-  return <div className="grid gap-6 lg:grid-cols-[1fr_280px]"><div className="flex min-h-[560px] flex-col border-2 border-[#111] bg-white"><div className="max-h-[65vh] min-h-[360px] flex-1 space-y-4 overflow-y-auto p-4 md:p-6" aria-live="polite">{messages.map((message) => <motion.div key={message.id} initial={{ opacity: 0, y: 10, scale: .96 }} animate={{ opacity: 1, y: 0 }} className={`flex ${message.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}><p className={`max-w-[80%] border-2 border-[#111] px-4 py-3 text-sm ${message.senderId === currentUserId ? 'bg-[#c8ff3d]' : 'bg-[#f4efe6]'}`}>{message.text}</p></motion.div>)}{typing && <p className="font-mono text-xs text-[#111]/60" role="status">{name} is typing…</p>}</div><div className="border-t-2 border-[#111] p-4"><div className="mb-3 flex gap-2 overflow-x-auto pb-1">{icebreakers.map((icebreaker) => <button type="button" key={icebreaker} onClick={() => setText(icebreaker)} className="shrink-0 border border-[#111] px-2 py-1 font-mono text-[9px] font-bold uppercase transition hover:bg-[#c8ff3d]">{icebreaker}</button>)}</div><form onSubmit={(event) => { event.preventDefault(); void submit() }} className="flex gap-2"><input value={text} onChange={(event) => { setText(event.target.value); if (event.target.value.trim()) getSocket().emit('typing', { matchId }) }} onKeyDown={(event) => { if (event.key === 'Enter' && (event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault() }} aria-label="Message" className="min-w-0 flex-1 border-2 border-[#111] bg-[#f4efe6] px-3 py-3 text-sm outline-none transition focus:ring-2 focus:ring-[#ff4d2e]" placeholder={`Message ${name}`} /><button type="submit" disabled={sending || !text.trim()} aria-label="Send message" className="grid size-12 shrink-0 place-items-center border-2 border-[#111] bg-[#ff4d2e] text-white shadow-[3px_3px_0_#111] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50"><Send size={18} /></button></form>{error && <p className="mt-3 text-sm font-medium text-[#c53030]" role="alert">{error}</p>}</div></div><MeetupCard /></div>
+  return <div className="grid gap-6 lg:grid-cols-[1fr_280px]"><div className="flex min-h-[560px] flex-col border-2 border-[#111] bg-white"><div className="max-h-[65vh] min-h-[360px] flex-1 space-y-4 overflow-y-auto p-4 md:p-6" aria-live="polite">{messages.map((message) => <motion.div key={message.id} initial={{ opacity: 0, y: 10, scale: .96 }} animate={{ opacity: 1, y: 0 }} className={`flex ${message.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}><p className={`max-w-[80%] border-2 border-[#111] px-4 py-3 text-sm ${message.senderId === currentUserId ? 'bg-[#c8ff3d]' : 'bg-[#f4efe6]'}`}>{message.text}</p>{message.senderId === currentUserId && <span className="ml-2 self-end font-mono text-[9px] text-[#111]/50" aria-label={read ? 'Read' : 'Sent'}>{read ? 'Read' : 'Sent'}</span>}</motion.div>)}{typing && <p className="font-mono text-xs text-[#111]/60" role="status">{name} is typing…</p>}</div><div className="border-t-2 border-[#111] p-4"><div className="mb-3 flex gap-2 overflow-x-auto pb-1">{icebreakers.map((icebreaker) => <button type="button" key={icebreaker} onClick={() => setText(icebreaker)} className="shrink-0 border border-[#111] px-2 py-1 font-mono text-[9px] font-bold uppercase transition hover:bg-[#c8ff3d]">{icebreaker}</button>)}</div><form onSubmit={(event) => { event.preventDefault(); void submit() }} className="flex gap-2"><input value={text} onChange={(event) => { setText(event.target.value); if (event.target.value.trim()) getSocket().emit('typing', { matchId }) }} onKeyDown={(event) => { if (event.key === 'Enter' && (event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault() }} aria-label="Message" className="min-w-0 flex-1 border-2 border-[#111] bg-[#f4efe6] px-3 py-3 text-sm outline-none transition focus:ring-2 focus:ring-[#ff4d2e]" placeholder={`Message ${name}`} /><button type="submit" disabled={sending || !text.trim()} aria-label="Send message" className="grid size-12 shrink-0 place-items-center border-2 border-[#111] bg-[#ff4d2e] text-white shadow-[3px_3px_0_#111] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50"><Send size={18} /></button></form>{error && <p className="mt-3 text-sm font-medium text-[#c53030]" role="alert">{error}</p>}</div></div><MeetupCard /></div>
 }
 
 function MeetupCard() { const [open, setOpen] = useState(false); return <aside className="border-2 border-[#111] bg-[#c8ff3d] p-5 self-start"><p className="font-mono text-[10px] font-bold uppercase tracking-[.18em]">Good next step</p><h3 className="mt-2 font-display text-4xl leading-none">Meet IRL.</h3><ol className="mt-5 space-y-3">{['Chat', 'Video call', 'Meet in a public place'].map((step, index) => <li key={step} className="flex items-center gap-3 font-mono text-[10px] font-bold uppercase"><span className="grid size-7 place-items-center border-2 border-[#111] bg-white">{index + 1}</span>{step}</li>)}</ol><button onClick={() => setOpen(!open)} className="mt-5 flex items-center gap-2 font-mono text-[10px] font-bold uppercase underline">Safety tips <Info size={14} /></button>{open && <p className="mt-3 border-t-2 border-[#111] pt-3 text-xs leading-relaxed">Tell someone where you are going, meet during the day, and keep your own transport home.</p>}</aside> }

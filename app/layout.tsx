@@ -6,8 +6,8 @@ import { AppShell } from '@/components/app-shell'
 import { AuthBoot } from '@/components/auth-boot'
 
 export const metadata: Metadata = {
-  title: 'FlatFit — Find your kind of home',
-  description: 'The compatibility-first way to find flatmates in India.',
+  title: 'FlatFit — Find your kind of flatmate',
+  description: 'Swipe on compatible flatmates, match on shared habits, and start a real conversation.',
   generator: 'FlatFit',
 }
 

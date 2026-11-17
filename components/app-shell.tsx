@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import Lenis from 'lenis'
-import { Compass, Heart, Home, UserRound, LogOut } from 'lucide-react'
+import { Compass, Heart, UserRound, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
@@ -13,7 +13,6 @@ import { logout } from '@/lib/auth-api'
 const tabs = [
   { label: 'Discover', href: '/discover', icon: Compass },
   { label: 'Matches', href: '/matches', icon: Heart },
-  { label: 'Listings', href: '/listings', icon: Home },
   { label: 'Profile', href: '/profile', icon: UserRound },
 ]
 
@@ -54,7 +53,7 @@ function Navbar() {
         <sup className="ml-1 align-top font-mono text-[9px] tracking-normal">IN</sup>
       </Link>
       <nav className="hidden items-center gap-7 md:flex">
-        {tabs.slice(0, 3).map((tab) => (
+        {tabs.slice(0, 2).map((tab) => (
           <Link
             key={tab.href}
             href={tab.href}
@@ -77,7 +76,7 @@ function TabBar() {
   const pathname = usePathname()
   if (pathname.startsWith('/onboarding')) return null
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 border-t-2 border-[#111] bg-[#f4efe6] pb-[env(safe-area-inset-bottom)] md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-3 border-t-2 border-[#111] bg-[#f4efe6] pb-[env(safe-area-inset-bottom)] md:hidden">
       {tabs.map(({ label, href, icon: Icon }) => (
         <Link
           key={href}
