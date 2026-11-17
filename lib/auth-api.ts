@@ -1,4 +1,4 @@
-import { api, getApiUrl, setAccessToken } from './api'
+import { api, getApiUrl, getAccessToken, setAccessToken } from './api'
 import { useAuthStore } from '@/store/auth'
 
 type AuthUser = { id: string; name: string; role: string; plan: string; email?: string; phone?: string }
@@ -45,11 +45,14 @@ export async function tryRefresh() {
 }
 
 export async function hydrateSession() {
-  const refreshed = await tryRefresh()
-  if (!refreshed) return null
+  const currentToken = getAccessToken()
+  if (!currentToken) {
+    const refreshed = await tryRefresh()
+    if (!refreshed) return null
+  }
   try {
     const me = await api<{ user: AuthUser }>('/me', { method: 'GET' })
-    persist(me.user, refreshed.accessToken)
+    persist(me.user, getAccessToken() ?? currentToken ?? '')
     return me.user
   } catch {
     useAuthStore.getState().clearSession()
